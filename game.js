@@ -32,6 +32,7 @@ const player = {
 
 let actions = [];
 let locations = {};
+let items = {};
 let inventory = [];
 let equipment = {};
 let categories = [];
@@ -163,27 +164,49 @@ function renderInventorySubtabs() {
 
 function renderInventoryItems() {
   inventoryItemsEl.innerHTML = '';
-  const filtered = inventory.filter(item => {
+  const filtered = inventory.filter(id => {
+    const item = items[id];
     const categoryMatch = currentCategory === 'all' || item.type === currentCategory;
     const subMatch = !currentSubcategory || item.subtype === currentSubcategory;
     return categoryMatch && subMatch;
   });
-  filtered.forEach(item => {
+  filtered.forEach(id => {
     const li = document.createElement('li');
-    li.textContent = item.name;
+    li.textContent = items[id].name;
+    li.addEventListener('click', () => handleItemClick(id));
     inventoryItemsEl.appendChild(li);
   });
 }
 
 function renderEquipment() {
-  equipRightHandEl.textContent = equipment.rightHand || '없음';
-  equipLeftHandEl.textContent = equipment.leftHand || '없음';
-  equipHeadEl.textContent = equipment.head || '없음';
-  equipTopEl.textContent = equipment.top || '없음';
-  equipBottomEl.textContent = equipment.bottom || '없음';
-  equipBackEl.textContent = equipment.back || '없음';
-  equipGlovesEl.textContent = equipment.gloves || '없음';
-  equipShoesEl.textContent = equipment.shoes || '없음';
+  equipRightHandEl.textContent = equipment.rightHand ? items[equipment.rightHand].name : '없음';
+  equipLeftHandEl.textContent = equipment.leftHand ? items[equipment.leftHand].name : '없음';
+  equipHeadEl.textContent = equipment.head ? items[equipment.head].name : '없음';
+  equipTopEl.textContent = equipment.top ? items[equipment.top].name : '없음';
+  equipBottomEl.textContent = equipment.bottom ? items[equipment.bottom].name : '없음';
+  equipBackEl.textContent = equipment.back ? items[equipment.back].name : '없음';
+  equipGlovesEl.textContent = equipment.gloves ? items[equipment.gloves].name : '없음';
+  equipShoesEl.textContent = equipment.shoes ? items[equipment.shoes].name : '없음';
+}
+
+function handleItemClick(id) {
+  const item = items[id];
+  if (item.type === 'weapon') {
+    const choice = prompt('1. 오른손에 장착\n2. 왼손에 장착\n3. 뒤로');
+    if (choice === '1') {
+      equipment.rightHand = id;
+      renderEquipment();
+    } else if (choice === '2') {
+      equipment.leftHand = id;
+      renderEquipment();
+    }
+  } else if (item.type === 'armor') {
+    const choice = prompt('1. 장착\n2. 뒤로');
+    if (choice === '1') {
+      equipment[item.subtype] = id;
+      renderEquipment();
+    }
+  }
 }
 
 function openInventory() {
@@ -204,15 +227,17 @@ function closeInventory() {
 }
 
 async function loadData() {
-  const [actionData, locationData, inventoryData] = await Promise.all([
+  const [actionData, locationData, inventoryData, itemData] = await Promise.all([
     fetch('data/actions.json').then(res => res.json()),
     fetch('data/locations.json').then(res => res.json()),
-    fetch('data/inventory.json').then(res => res.json())
+    fetch('data/inventory.json').then(res => res.json()),
+    fetch('data/items.json').then(res => res.json())
   ]);
 
   actions = actionData.actions;
   locations = locationData.locations;
   currentLocation = locationData.start;
+  items = itemData.items;
   inventory = inventoryData.inventory;
   equipment = inventoryData.equipment;
   categories = inventoryData.categories;
