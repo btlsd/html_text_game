@@ -1,0 +1,32 @@
+{
+  "items": {
+    "rusty_sword": {
+      "name": "낡은 칼",
+      "type": "weapon",
+      "subtype": "melee",
+      "properties": {
+        "attack": 5
+      }
+    },
+    "cloth_armor": {
+      "name": "천 갑옷",
+      "type": "armor",
+      "subtype": "top",
+      "properties": {
+        "defense": 1
+      }
+    },
+    "bandage": {
+      "name": "붕대",
+      "type": "medicine",
+      "properties": {
+        "heal": 10
+      }
+    },
+    "guild_badge": {
+      "name": "길드 증표",
+      "type": "important",
+      "properties": {}
+    }
+  }
+}
