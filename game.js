@@ -1,50 +1,53 @@
-const storyElement = document.getElementById('story');
-const inputElement = document.getElementById('input');
-const submitButton = document.getElementById('submit');
+const locationNameEl = document.getElementById('location-name');
+const locationDescEl = document.getElementById('location-description');
+const npcListEl = document.getElementById('npc-list');
+const actionListEl = document.getElementById('action-list');
+const statusInfoEl = document.getElementById('status-info');
 
-const scenes = {
-  town: {
-    text: 'You are in the town square. Exits: north.',
-    actions: {
-      north: 'forest'
-    }
-  },
-  forest: {
-    text: 'A goblin blocks your path! Do you attack or run?',
-    actions: {
-      attack: 'victory',
-      run: 'town'
-    }
-  },
-  victory: {
-    text: 'You defeated the goblin and return home a hero. The end.',
-    actions: {}
-  }
+const player = {
+  hp: 100,
+  stamina: 50
 };
 
-let currentScene = 'town';
+let actions = [];
+let locations = {};
+let currentLocation = '';
 
-function showScene() {
-  storyElement.textContent = scenes[currentScene].text;
+function render() {
+  const loc = locations[currentLocation];
+  locationNameEl.textContent = loc && loc.name ? loc.name : '???';
+  locationDescEl.textContent = loc ? loc.description : '';
+
+  npcListEl.innerHTML = '';
+  if (loc && Array.isArray(loc.npcs)) {
+    loc.npcs.forEach(npc => {
+      const li = document.createElement('li');
+      li.textContent = npc;
+      npcListEl.appendChild(li);
+    });
+  }
+
+  actionListEl.innerHTML = '';
+  actions.forEach((action, index) => {
+    const li = document.createElement('li');
+    li.textContent = `${index + 1}. ${action}`;
+    actionListEl.appendChild(li);
+  });
+
+  statusInfoEl.textContent = `HP: ${player.hp}  기력: ${player.stamina}`;
 }
 
-function handleCommand() {
-  const command = inputElement.value.trim().toLowerCase();
-  inputElement.value = '';
-  const next = scenes[currentScene].actions[command];
-  if (next) {
-    currentScene = next;
-    showScene();
-  } else {
-    storyElement.textContent += `\nI don't understand '${command}'.`;
-  }
+async function loadData() {
+  const [actionData, locationData] = await Promise.all([
+    fetch('data/actions.json').then(res => res.json()),
+    fetch('data/locations.json').then(res => res.json())
+  ]);
+
+  actions = actionData.actions;
+  locations = locationData.locations;
+  currentLocation = locationData.start;
+  render();
 }
 
-submitButton.addEventListener('click', handleCommand);
-inputElement.addEventListener('keydown', e => {
-  if (e.key === 'Enter') {
-    handleCommand();
-  }
-});
+loadData();
 
-showScene();

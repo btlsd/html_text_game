@@ -17,31 +17,12 @@ body {
   box-shadow: 0 0 10px rgba(0,0,0,0.5);
 }
 
-#story {
-  white-space: pre-wrap;
-  min-height: 150px;
+#npc-list,
+#action-list {
+  list-style: none;
+  padding-left: 0;
 }
 
-#input {
-  width: 100%;
-  padding: 10px;
-  margin-top: 10px;
-  border: 1px solid #555;
-  border-radius: 4px;
-  background-color: #1e1e1e;
-  color: #f1f1f1;
-}
-
-#submit {
-  margin-top: 10px;
-  padding: 10px 20px;
-  background-color: #4caf50;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-#submit:hover {
-  background-color: #45a049;
+#status {
+  margin-top: 20px;
 }
