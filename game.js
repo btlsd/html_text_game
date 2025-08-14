@@ -22,9 +22,18 @@ const equipBackEl = document.getElementById('equip-back');
 const equipGlovesEl = document.getElementById('equip-gloves');
 const equipShoesEl = document.getElementById('equip-shoes');
 const closeInventoryEl = document.getElementById('close-inventory');
-const statusInfoEl = document.getElementById('status-info');
+const hpBarEl = document.getElementById('hp-bar');
+const hpTextEl = document.getElementById('hp-text');
+const staminaBarEl = document.getElementById('stamina-bar');
+const staminaTextEl = document.getElementById('stamina-text');
 const playerCommandEl = document.getElementById('player-command');
 const submitCommandEl = document.getElementById('submit-command');
+const statusUIEl = document.getElementById('status-ui');
+const statListEl = document.getElementById('stat-list');
+const extraStatsEl = document.getElementById('extra-stats');
+const statusDescEl = document.getElementById('status-description');
+const statusConfirmEl = document.getElementById('status-confirm');
+const closeStatusEl = document.getElementById('close-status');
 
 const slotDisplayNames = {
   head: '머리',
@@ -35,10 +44,40 @@ const slotDisplayNames = {
   shoes: '신발'
 };
 
-const player = {
-  hp: 100,
-  stamina: 50
+const statDisplayNames = {
+  strength: '힘',
+  perception: '지각',
+  endurance: '지구력',
+  charisma: '매력',
+  intelligence: '지능',
+  agility: '민첩'
 };
+
+const player = {
+  stats: {
+    strength: 5,
+    perception: 5,
+    endurance: 5,
+    charisma: 5,
+    intelligence: 5,
+    agility: 5
+  },
+  hp: 0,
+  stamina: 0,
+  extraStats: 0,
+  tempStats: {}
+};
+
+function getMaxHp() {
+  return player.stats.endurance * 10 + player.stats.strength * 5;
+}
+
+function getMaxStamina() {
+  return player.stats.endurance * 8 + player.stats.charisma * 4;
+}
+
+player.hp = getMaxHp();
+player.stamina = getMaxStamina();
 
 let actions = [];
 let locations = {};
@@ -68,7 +107,12 @@ function render() {
   const loc = locations[currentLocation];
   locationNameEl.textContent = loc && loc.name ? loc.name : '???';
   locationDescEl.textContent = loc ? loc.description : '';
-  statusInfoEl.textContent = `HP: ${player.hp}  기력: ${player.stamina}`;
+  const maxHp = getMaxHp();
+  const maxStamina = getMaxStamina();
+  hpBarEl.style.width = `${(player.hp / maxHp) * 100}%`;
+  hpTextEl.textContent = `${player.hp}/${maxHp}`;
+  staminaBarEl.style.width = `${(player.stamina / maxStamina) * 100}%`;
+  staminaTextEl.textContent = `${player.stamina}/${maxStamina}`;
 }
 
 function renderNpcList() {
@@ -138,6 +182,7 @@ function showMainMenu() {
   actionSectionEl.classList.remove('active');
   inventoryMenuEl.style.display = '';
   inventoryUIEl.style.display = 'none';
+  statusUIEl.style.display = 'none';
   document.getElementById('location').style.display = '';
   npcSectionEl.style.display = '';
   actionSectionEl.style.display = '';
@@ -193,16 +238,104 @@ function openNpcInteractions(npc, npcIndex) {
 function openActionMenu() {
   currentMenu = 'actions';
   updateHeaders();
+  const items = ['상태', '기술', '뒤로'];
+  displayMenu(actionListEl, items, (idx) => {
+    if (idx === 0) {
+      openStatusMenu();
+    } else if (idx === 1) {
+      openSkillsMenu();
+    } else {
+      showMainMenu();
+    }
+  });
+  actionSectionEl.classList.add('active');
+  npcSectionEl.classList.remove('active');
+}
+
+function openSkillsMenu() {
+  currentMenu = 'skills';
+  updateHeaders();
   const items = [...actions, '뒤로'];
   displayMenu(actionListEl, items, (idx) => {
     if (idx === actions.length) {
-      showMainMenu();
+      openActionMenu();
     } else {
       console.log(`Action selected: ${actions[idx]}`);
     }
   });
   actionSectionEl.classList.add('active');
   npcSectionEl.classList.remove('active');
+}
+
+function openStatusMenu() {
+  currentMenu = 'status';
+  document.getElementById('location').style.display = 'none';
+  npcSectionEl.style.display = 'none';
+  actionSectionEl.style.display = 'none';
+  inventoryMenuEl.style.display = 'none';
+  document.getElementById('status').style.display = 'none';
+  document.getElementById('player-input-container').style.display = 'none';
+  statusUIEl.style.display = 'block';
+  renderStatusMenu();
+}
+
+function closeStatusMenu() {
+  statusUIEl.style.display = 'none';
+  showMainMenu();
+}
+
+function renderStatusMenu() {
+  statListEl.innerHTML = '';
+  Object.keys(player.stats).forEach(key => {
+    const li = document.createElement('li');
+    const name = statDisplayNames[key] || key;
+    const span = document.createElement('span');
+    const value = player.stats[key] + (player.tempStats[key] || 0);
+    span.textContent = value;
+    li.textContent = `${name}: `;
+    li.appendChild(span);
+    const incBtn = document.createElement('button');
+    incBtn.textContent = '+';
+    incBtn.addEventListener('click', () => increaseStat(key));
+    if (player.extraStats <= 0) incBtn.disabled = true;
+    const decBtn = document.createElement('button');
+    decBtn.textContent = '-';
+    decBtn.addEventListener('click', () => decreaseStat(key));
+    if (!(player.tempStats[key] > 0)) decBtn.disabled = true;
+    li.appendChild(incBtn);
+    li.appendChild(decBtn);
+    statListEl.appendChild(li);
+  });
+  extraStatsEl.textContent = player.extraStats > 0 ? `추가 스탯: ${player.extraStats}` : '';
+  statusDescEl.textContent = '아직 특별한 이상은 보이지 않는다.';
+}
+
+function increaseStat(key) {
+  if (player.extraStats <= 0) return;
+  player.extraStats--;
+  player.tempStats[key] = (player.tempStats[key] || 0) + 1;
+  renderStatusMenu();
+}
+
+function decreaseStat(key) {
+  if (!(player.tempStats[key] > 0)) return;
+  player.tempStats[key]--;
+  if (player.tempStats[key] === 0) delete player.tempStats[key];
+  player.extraStats++;
+  renderStatusMenu();
+}
+
+function confirmStatAllocation() {
+  Object.keys(player.tempStats).forEach(key => {
+    player.stats[key] += player.tempStats[key];
+  });
+  player.tempStats = {};
+  const maxHp = getMaxHp();
+  if (player.hp > maxHp) player.hp = maxHp;
+  const maxStamina = getMaxStamina();
+  if (player.stamina > maxStamina) player.stamina = maxStamina;
+  render();
+  renderStatusMenu();
 }
 
 function renderInventory() {
@@ -342,7 +475,7 @@ npcHeaderEl.addEventListener('click', () => {
 });
 
 actionHeaderEl.addEventListener('click', () => {
-  if (currentMenu === 'actions') {
+  if (currentMenu === 'actions' || currentMenu === 'skills') {
     showMainMenu();
   } else {
     openActionMenu();
@@ -385,8 +518,16 @@ function handleCommand() {
       console.log(`Interaction with ${currentNpc}: ${npcActions[num - 1]}`);
     }
   } else if (currentMenu === 'actions') {
-    if (num === actions.length + 1) {
+    if (num === 1) {
+      openStatusMenu();
+    } else if (num === 2) {
+      openSkillsMenu();
+    } else if (num === 3) {
       showMainMenu();
+    }
+  } else if (currentMenu === 'skills') {
+    if (num === actions.length + 1) {
+      openActionMenu();
     } else if (num > 0 && num <= actions.length) {
       highlightItem(actionListEl, num - 1);
       console.log(`Action selected: ${actions[num - 1]}`);
@@ -405,4 +546,6 @@ playerCommandEl.addEventListener('keypress', (e) => {
 
 inventoryHeaderEl.addEventListener('click', openInventory);
 closeInventoryEl.addEventListener('click', closeInventory);
+statusConfirmEl.addEventListener('click', confirmStatAllocation);
+closeStatusEl.addEventListener('click', closeStatusMenu);
 

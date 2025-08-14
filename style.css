@@ -53,6 +53,24 @@ body {
   margin-top: 20px;
 }
 
+.resource {
+  display: flex;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.bar-container {
+  width: 100px;
+  height: 10px;
+  border: 1px solid #00ff00;
+  margin-right: 10px;
+}
+
+.bar {
+  height: 100%;
+  background-color: #00ff00;
+}
+
 #player-input-container {
   margin-top: 20px;
   display: flex;
@@ -133,6 +151,60 @@ body {
 
 #close-inventory {
   margin-top: 20px;
+  background-color: #000;
+  color: #00ff00;
+  border: 1px solid #00ff00;
+  font-family: 'Courier New', monospace;
+  cursor: pointer;
+}
+
+#status-ui {
+  display: none;
+  margin-top: 20px;
+}
+
+#status-container {
+  display: flex;
+}
+
+#status-left {
+  flex: 1;
+}
+
+#status-left ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+#status-left li {
+  margin-bottom: 5px;
+}
+
+#status-left button {
+  background-color: #000;
+  color: #00ff00;
+  border: 1px solid #00ff00;
+  font-family: 'Courier New', monospace;
+  cursor: pointer;
+  margin-left: 5px;
+}
+
+#status-right {
+  flex: 1;
+  padding-left: 20px;
+}
+
+#status-right button {
+  margin-top: 10px;
+  background-color: #000;
+  color: #00ff00;
+  border: 1px solid #00ff00;
+  font-family: 'Courier New', monospace;
+  cursor: pointer;
+}
+
+#status-confirm {
+  margin-top: 10px;
   background-color: #000;
   color: #00ff00;
   border: 1px solid #00ff00;
