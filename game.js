@@ -38,6 +38,7 @@ let equipment = {};
 let categories = [];
 let currentLocation = '';
 let currentMenu = 'main';
+let currentNpc = '';
 let currentCategory = '';
 let currentSubcategory = null;
 
@@ -60,11 +61,27 @@ function render() {
   statusInfoEl.textContent = `HP: ${player.hp}  기력: ${player.stamina}`;
 }
 
-function displayMenu(listEl, items) {
+function renderNpcList() {
+  const loc = locations[currentLocation];
+  const npcs = loc && Array.isArray(loc.npcs)
+    ? loc.npcs.slice().sort((a, b) => a.localeCompare(b))
+    : [];
+  npcListEl.innerHTML = '';
+  npcs.forEach(name => {
+    const li = document.createElement('li');
+    li.textContent = name;
+    npcListEl.appendChild(li);
+  });
+}
+
+function displayMenu(listEl, items, onSelect) {
   listEl.innerHTML = '';
   const elements = items.map((text, idx) => {
     const li = document.createElement('li');
     li.textContent = '';
+    if (onSelect) {
+      li.addEventListener('click', () => onSelect(idx));
+    }
     listEl.appendChild(li);
     return { li, fullText: `${idx + 1}. ${text}` };
   });
@@ -85,8 +102,9 @@ function displayMenu(listEl, items) {
 
 function showMainMenu() {
   currentMenu = 'main';
+  currentNpc = '';
   updateHeaders();
-  npcListEl.innerHTML = '';
+  renderNpcList();
   actionListEl.innerHTML = '';
   npcSectionEl.classList.remove('active');
   actionSectionEl.classList.remove('active');
@@ -101,13 +119,41 @@ function showMainMenu() {
 
 function openNpcMenu() {
   currentMenu = 'npcs';
+  currentNpc = '';
   updateHeaders();
   const loc = locations[currentLocation];
   const npcs = loc && Array.isArray(loc.npcs)
     ? loc.npcs.slice().sort((a, b) => a.localeCompare(b))
     : [];
   const items = [...npcs, '뒤로'];
-  displayMenu(npcListEl, items);
+  displayMenu(npcListEl, items, (idx) => {
+    if (idx === npcs.length) {
+      showMainMenu();
+    } else {
+      openNpcInteractions(npcs[idx]);
+    }
+  });
+  npcSectionEl.classList.add('active');
+  actionSectionEl.classList.remove('active');
+}
+
+function getNpcActions(npc) {
+  return ['대화', '관찰'];
+}
+
+function openNpcInteractions(npc) {
+  currentMenu = 'npcInteractions';
+  currentNpc = npc;
+  updateHeaders();
+  const npcActions = getNpcActions(npc);
+  const items = [...npcActions, '뒤로'];
+  displayMenu(npcListEl, items, (idx) => {
+    if (idx === npcActions.length) {
+      openNpcMenu();
+    } else {
+      console.log(`Interaction with ${npc}: ${npcActions[idx]}`);
+    }
+  });
   npcSectionEl.classList.add('active');
   actionSectionEl.classList.remove('active');
 }
@@ -249,7 +295,7 @@ async function loadData() {
 loadData();
 
 npcHeaderEl.addEventListener('click', () => {
-  if (currentMenu === 'npcs') {
+  if (currentMenu === 'npcs' || currentMenu === 'npcInteractions') {
     showMainMenu();
   } else {
     openNpcMenu();
@@ -289,7 +335,14 @@ function handleCommand() {
     if (num === npcs.length + 1) {
       showMainMenu();
     } else if (num > 0 && num <= npcs.length) {
-      console.log(`NPC selected: ${npcs[num - 1]}`);
+      openNpcInteractions(npcs[num - 1]);
+    }
+  } else if (currentMenu === 'npcInteractions') {
+    const npcActions = getNpcActions(currentNpc);
+    if (num === npcActions.length + 1) {
+      openNpcMenu();
+    } else if (num > 0 && num <= npcActions.length) {
+      console.log(`Interaction with ${currentNpc}: ${npcActions[num - 1]}`);
     }
   } else if (currentMenu === 'actions') {
     if (num === actions.length + 1) {
