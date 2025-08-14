@@ -1,0 +1,14 @@
+{
+  "start": "town",
+  "locations": {
+    "town": {
+      "name": "마을 광장",
+      "description": "당신은 붐비는 마을 광장에 서 있습니다.",
+      "npcs": ["상인", "경비병"]
+    },
+    "forest": {
+      "description": "나무가 빽빽한 숲. 어딘가에서 소리가 들립니다.",
+      "npcs": ["고블린"]
+    }
+  }
+}
