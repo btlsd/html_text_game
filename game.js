@@ -2,6 +2,8 @@ const locationNameEl = document.getElementById('location-name');
 const locationDescEl = document.getElementById('location-description');
 const npcListEl = document.getElementById('npc-list');
 const actionListEl = document.getElementById('action-list');
+const npcSectionEl = document.getElementById('npcs');
+const actionSectionEl = document.getElementById('actions');
 const statusInfoEl = document.getElementById('status-info');
 
 const player = {
@@ -37,6 +39,10 @@ function render() {
   statusInfoEl.textContent = `HP: ${player.hp}  기력: ${player.stamina}`;
 }
 
+function toggleSection(sectionEl) {
+  sectionEl.classList.toggle('active');
+}
+
 async function loadData() {
   const [actionData, locationData] = await Promise.all([
     fetch('data/actions.json').then(res => res.json()),
@@ -50,4 +56,15 @@ async function loadData() {
 }
 
 loadData();
+
+npcSectionEl.querySelector('h3').addEventListener('click', () => toggleSection(npcSectionEl));
+actionSectionEl.querySelector('h3').addEventListener('click', () => toggleSection(actionSectionEl));
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === '1') {
+    toggleSection(npcSectionEl);
+  } else if (e.key === '2') {
+    toggleSection(actionSectionEl);
+  }
+});
 
