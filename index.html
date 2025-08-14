@@ -19,6 +19,9 @@
       <h3 id="action-header"></h3>
       <ul id="action-list"></ul>
     </div>
+    <div id="inventory-menu" class="menu">
+      <h3 id="inventory-header"></h3>
+    </div>
     <div id="status">
       <h3>Status</h3>
       <p id="status-info"></p>
@@ -26,6 +29,26 @@
     <div id="player-input-container">
       <input type="text" id="player-command" placeholder="명령을 입력하세요" />
       <button id="submit-command">입력</button>
+    </div>
+    <div id="inventory-ui">
+      <div id="inventory-container">
+        <div id="inventory-left">
+          <div id="inventory-tabs"></div>
+          <ul id="inventory-items"></ul>
+        </div>
+        <div id="equipment-right">
+          <h3>장착</h3>
+          <ul>
+            <li>머리: <span id="equip-head">없음</span></li>
+            <li>상의: <span id="equip-top">없음</span></li>
+            <li>하의: <span id="equip-bottom">없음</span></li>
+            <li>등: <span id="equip-back">없음</span></li>
+            <li>장갑: <span id="equip-gloves">없음</span></li>
+            <li>신발: <span id="equip-shoes">없음</span></li>
+          </ul>
+          <button id="close-inventory">뒤로</button>
+        </div>
+      </div>
     </div>
   </div>
   <script src="game.js"></script>
