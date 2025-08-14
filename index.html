@@ -24,8 +24,19 @@
       <h3 id="inventory-header"></h3>
     </div>
     <div id="status">
-      <h3>Status</h3>
-      <p id="status-info"></p>
+      <h3>상태</h3>
+      <div class="resource">
+        <div class="bar-container">
+          <div id="hp-bar" class="bar"></div>
+        </div>
+        <span id="hp-text"></span>
+      </div>
+      <div class="resource">
+        <div class="bar-container">
+          <div id="stamina-bar" class="bar"></div>
+        </div>
+        <span id="stamina-text"></span>
+      </div>
     </div>
     <div id="player-input-container">
       <input type="text" id="player-command" placeholder="명령을 입력하세요" />
@@ -51,6 +62,19 @@
             <li>신발: <span id="equip-shoes">없음</span></li>
           </ul>
           <button id="close-inventory">뒤로</button>
+        </div>
+      </div>
+    </div>
+    <div id="status-ui">
+      <div id="status-container">
+        <div id="status-left">
+          <ul id="stat-list"></ul>
+          <p id="extra-stats"></p>
+          <button id="status-confirm">확인</button>
+        </div>
+        <div id="status-right">
+          <p id="status-description"></p>
+          <button id="close-status">뒤로</button>
         </div>
       </div>
     </div>
