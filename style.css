@@ -40,6 +40,15 @@ body {
   display: block;
 }
 
+.menu li.selected,
+.menu h3.selected {
+  color: #ffff00;
+}
+
+#npc-interaction-list {
+  display: none;
+}
+
 #status {
   margin-top: 20px;
 }

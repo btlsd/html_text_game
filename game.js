@@ -1,6 +1,7 @@
 const locationNameEl = document.getElementById('location-name');
 const locationDescEl = document.getElementById('location-description');
 const npcListEl = document.getElementById('npc-list');
+const npcInteractionListEl = document.getElementById('npc-interaction-list');
 const actionListEl = document.getElementById('action-list');
 const npcSectionEl = document.getElementById('npcs');
 const actionSectionEl = document.getElementById('actions');
@@ -24,6 +25,15 @@ const closeInventoryEl = document.getElementById('close-inventory');
 const statusInfoEl = document.getElementById('status-info');
 const playerCommandEl = document.getElementById('player-command');
 const submitCommandEl = document.getElementById('submit-command');
+
+const slotDisplayNames = {
+  head: '머리',
+  top: '상의',
+  bottom: '하의',
+  back: '등',
+  gloves: '장갑',
+  shoes: '신발'
+};
 
 const player = {
   hp: 100,
@@ -74,13 +84,27 @@ function renderNpcList() {
   });
 }
 
+function highlightItem(listEl, index) {
+  const items = listEl.querySelectorAll('li');
+  items.forEach((li, idx) => {
+    if (idx === index) {
+      li.classList.add('selected');
+    } else {
+      li.classList.remove('selected');
+    }
+  });
+}
+
 function displayMenu(listEl, items, onSelect) {
   listEl.innerHTML = '';
   const elements = items.map((text, idx) => {
     const li = document.createElement('li');
     li.textContent = '';
     if (onSelect) {
-      li.addEventListener('click', () => onSelect(idx));
+      li.addEventListener('click', () => {
+        highlightItem(listEl, idx);
+        onSelect(idx);
+      });
     }
     listEl.appendChild(li);
     return { li, fullText: `${idx + 1}. ${text}` };
@@ -106,6 +130,10 @@ function showMainMenu() {
   updateHeaders();
   renderNpcList();
   actionListEl.innerHTML = '';
+  npcInteractionListEl.innerHTML = '';
+  npcInteractionListEl.style.display = 'none';
+  npcListEl.querySelectorAll('li').forEach(li => li.classList.remove('selected'));
+  actionListEl.querySelectorAll('li').forEach(li => li.classList.remove('selected'));
   npcSectionEl.classList.remove('active');
   actionSectionEl.classList.remove('active');
   inventoryMenuEl.style.display = '';
@@ -130,9 +158,11 @@ function openNpcMenu() {
     if (idx === npcs.length) {
       showMainMenu();
     } else {
-      openNpcInteractions(npcs[idx]);
+      openNpcInteractions(npcs[idx], idx);
     }
   });
+  npcInteractionListEl.innerHTML = '';
+  npcInteractionListEl.style.display = 'none';
   npcSectionEl.classList.add('active');
   actionSectionEl.classList.remove('active');
 }
@@ -141,19 +171,21 @@ function getNpcActions(npc) {
   return ['대화', '관찰'];
 }
 
-function openNpcInteractions(npc) {
+function openNpcInteractions(npc, npcIndex) {
   currentMenu = 'npcInteractions';
   currentNpc = npc;
   updateHeaders();
+  highlightItem(npcListEl, npcIndex);
   const npcActions = getNpcActions(npc);
   const items = [...npcActions, '뒤로'];
-  displayMenu(npcListEl, items, (idx) => {
+  displayMenu(npcInteractionListEl, items, (idx) => {
     if (idx === npcActions.length) {
       openNpcMenu();
     } else {
       console.log(`Interaction with ${npc}: ${npcActions[idx]}`);
     }
   });
+  npcInteractionListEl.style.display = 'block';
   npcSectionEl.classList.add('active');
   actionSectionEl.classList.remove('active');
 }
@@ -162,7 +194,13 @@ function openActionMenu() {
   currentMenu = 'actions';
   updateHeaders();
   const items = [...actions, '뒤로'];
-  displayMenu(actionListEl, items);
+  displayMenu(actionListEl, items, (idx) => {
+    if (idx === actions.length) {
+      showMainMenu();
+    } else {
+      console.log(`Action selected: ${actions[idx]}`);
+    }
+  });
   actionSectionEl.classList.add('active');
   npcSectionEl.classList.remove('active');
 }
@@ -247,7 +285,8 @@ function handleItemClick(id) {
       renderEquipment();
     }
   } else if (item.type === 'armor') {
-    const choice = prompt('1. 장착\n2. 뒤로');
+    const slotName = slotDisplayNames[item.subtype] || item.subtype;
+    const choice = prompt(`1. ${slotName}에 장착\n2. 뒤로`);
     if (choice === '1') {
       equipment[item.subtype] = id;
       renderEquipment();
@@ -335,19 +374,21 @@ function handleCommand() {
     if (num === npcs.length + 1) {
       showMainMenu();
     } else if (num > 0 && num <= npcs.length) {
-      openNpcInteractions(npcs[num - 1]);
+      openNpcInteractions(npcs[num - 1], num - 1);
     }
   } else if (currentMenu === 'npcInteractions') {
     const npcActions = getNpcActions(currentNpc);
     if (num === npcActions.length + 1) {
       openNpcMenu();
     } else if (num > 0 && num <= npcActions.length) {
+      highlightItem(npcInteractionListEl, num - 1);
       console.log(`Interaction with ${currentNpc}: ${npcActions[num - 1]}`);
     }
   } else if (currentMenu === 'actions') {
     if (num === actions.length + 1) {
       showMainMenu();
     } else if (num > 0 && num <= actions.length) {
+      highlightItem(actionListEl, num - 1);
       console.log(`Action selected: ${actions[num - 1]}`);
     }
   }
