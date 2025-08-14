@@ -10,7 +10,10 @@ const inventoryHeaderEl = document.getElementById('inventory-header');
 const inventoryMenuEl = document.getElementById('inventory-menu');
 const inventoryUIEl = document.getElementById('inventory-ui');
 const inventoryTabsEl = document.getElementById('inventory-tabs');
+const inventorySubtabsEl = document.getElementById('inventory-subtabs');
 const inventoryItemsEl = document.getElementById('inventory-items');
+const equipRightHandEl = document.getElementById('equip-rightHand');
+const equipLeftHandEl = document.getElementById('equip-leftHand');
 const equipHeadEl = document.getElementById('equip-head');
 const equipTopEl = document.getElementById('equip-top');
 const equipBottomEl = document.getElementById('equip-bottom');
@@ -29,33 +32,13 @@ const player = {
 
 let actions = [];
 let locations = {};
+let inventory = [];
+let equipment = {};
+let categories = [];
 let currentLocation = '';
 let currentMenu = 'main';
-let currentCategory = 'all';
-
-const inventory = [
-  { name: '낡은 칼', type: 'weapon' },
-  { name: '천 갑옷', type: 'armor' },
-  { name: '붕대', type: 'medicine' },
-  { name: '길드 증표', type: 'important' }
-];
-
-const equipment = {
-  head: null,
-  top: null,
-  bottom: null,
-  back: null,
-  gloves: null,
-  shoes: null
-};
-
-const categories = [
-  { key: 'all', label: '전체' },
-  { key: 'weapon', label: '무기' },
-  { key: 'armor', label: '방어구' },
-  { key: 'medicine', label: '의약품' },
-  { key: 'important', label: '중요 물품' }
-];
+let currentCategory = '';
+let currentSubcategory = null;
 
 function updateHeaders() {
   if (currentMenu === 'main') {
@@ -140,6 +123,7 @@ function openActionMenu() {
 function renderInventory() {
   renderEquipment();
   renderInventoryTabs();
+  renderInventorySubtabs();
   renderInventoryItems();
 }
 
@@ -150,15 +134,40 @@ function renderInventoryTabs() {
     btn.textContent = cat.label;
     btn.addEventListener('click', () => {
       currentCategory = cat.key;
+      currentSubcategory = null;
+      renderInventorySubtabs();
       renderInventoryItems();
     });
     inventoryTabsEl.appendChild(btn);
   });
 }
 
+function renderInventorySubtabs() {
+  inventorySubtabsEl.innerHTML = '';
+  const category = categories.find(cat => cat.key === currentCategory);
+  if (category && Array.isArray(category.subcategories)) {
+    inventorySubtabsEl.style.display = '';
+    category.subcategories.forEach(sub => {
+      const btn = document.createElement('button');
+      btn.textContent = sub.label;
+      btn.addEventListener('click', () => {
+        currentSubcategory = sub.key;
+        renderInventoryItems();
+      });
+      inventorySubtabsEl.appendChild(btn);
+    });
+  } else {
+    inventorySubtabsEl.style.display = 'none';
+  }
+}
+
 function renderInventoryItems() {
   inventoryItemsEl.innerHTML = '';
-  const filtered = inventory.filter(item => currentCategory === 'all' || item.type === currentCategory);
+  const filtered = inventory.filter(item => {
+    const categoryMatch = currentCategory === 'all' || item.type === currentCategory;
+    const subMatch = !currentSubcategory || item.subtype === currentSubcategory;
+    return categoryMatch && subMatch;
+  });
   filtered.forEach(item => {
     const li = document.createElement('li');
     li.textContent = item.name;
@@ -167,6 +176,8 @@ function renderInventoryItems() {
 }
 
 function renderEquipment() {
+  equipRightHandEl.textContent = equipment.rightHand || '없음';
+  equipLeftHandEl.textContent = equipment.leftHand || '없음';
   equipHeadEl.textContent = equipment.head || '없음';
   equipTopEl.textContent = equipment.top || '없음';
   equipBottomEl.textContent = equipment.bottom || '없음';
@@ -193,14 +204,19 @@ function closeInventory() {
 }
 
 async function loadData() {
-  const [actionData, locationData] = await Promise.all([
+  const [actionData, locationData, inventoryData] = await Promise.all([
     fetch('data/actions.json').then(res => res.json()),
-    fetch('data/locations.json').then(res => res.json())
+    fetch('data/locations.json').then(res => res.json()),
+    fetch('data/inventory.json').then(res => res.json())
   ]);
 
   actions = actionData.actions;
   locations = locationData.locations;
   currentLocation = locationData.start;
+  inventory = inventoryData.inventory;
+  equipment = inventoryData.equipment;
+  categories = inventoryData.categories;
+  currentCategory = categories[0] ? categories[0].key : '';
   render();
   showMainMenu();
 }
