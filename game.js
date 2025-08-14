@@ -5,6 +5,8 @@ const actionListEl = document.getElementById('action-list');
 const npcSectionEl = document.getElementById('npcs');
 const actionSectionEl = document.getElementById('actions');
 const statusInfoEl = document.getElementById('status-info');
+const playerCommandEl = document.getElementById('player-command');
+const submitCommandEl = document.getElementById('submit-command');
 
 const player = {
   hp: 100,
@@ -22,7 +24,8 @@ function render() {
 
   npcListEl.innerHTML = '';
   if (loc && Array.isArray(loc.npcs)) {
-    loc.npcs.forEach(npc => {
+    const sortedNpcs = loc.npcs.slice().sort((a, b) => a.localeCompare(b));
+    sortedNpcs.forEach(npc => {
       const li = document.createElement('li');
       li.textContent = npc;
       npcListEl.appendChild(li);
@@ -30,9 +33,9 @@ function render() {
   }
 
   actionListEl.innerHTML = '';
-  actions.forEach((action, index) => {
+  actions.forEach(action => {
     const li = document.createElement('li');
-    li.textContent = `${index + 1}. ${action}`;
+    li.textContent = action;
     actionListEl.appendChild(li);
   });
 
@@ -65,6 +68,21 @@ document.addEventListener('keydown', (e) => {
     toggleSection(npcSectionEl);
   } else if (e.key === '2') {
     toggleSection(actionSectionEl);
+  }
+});
+
+function handleCommand() {
+  const command = playerCommandEl.value.trim();
+  if (command) {
+    console.log(`Player command: ${command}`);
+    playerCommandEl.value = '';
+  }
+}
+
+submitCommandEl.addEventListener('click', handleCommand);
+playerCommandEl.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') {
+    handleCommand();
   }
 });
 
