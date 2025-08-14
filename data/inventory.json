@@ -1,0 +1,37 @@
+{
+  "categories": [
+    { "key": "all", "label": "전체" },
+    { "key": "weapon", "label": "무기", "subcategories": [
+      { "key": "melee", "label": "냉병기" },
+      { "key": "blunt", "label": "둔기" },
+      { "key": "firearm", "label": "화기" },
+      { "key": "energy", "label": "에너지무기" }
+    ]},
+    { "key": "armor", "label": "방어구", "subcategories": [
+      { "key": "head", "label": "머리" },
+      { "key": "top", "label": "상의" },
+      { "key": "bottom", "label": "하의" },
+      { "key": "gloves", "label": "장갑" },
+      { "key": "back", "label": "등" },
+      { "key": "shoes", "label": "신발" }
+    ]},
+    { "key": "medicine", "label": "의약품" },
+    { "key": "important", "label": "중요 물품" }
+  ],
+  "inventory": [
+    { "name": "낡은 칼", "type": "weapon", "subtype": "melee" },
+    { "name": "천 갑옷", "type": "armor", "subtype": "top" },
+    { "name": "붕대", "type": "medicine" },
+    { "name": "길드 증표", "type": "important" }
+  ],
+  "equipment": {
+    "head": null,
+    "top": null,
+    "bottom": null,
+    "back": null,
+    "gloves": null,
+    "shoes": null,
+    "rightHand": null,
+    "leftHand": null
+  }
+}

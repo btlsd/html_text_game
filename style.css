@@ -93,6 +93,20 @@ body {
   cursor: pointer;
 }
 
+#inventory-subtabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+#inventory-subtabs button {
+  background-color: #000;
+  color: #00ff00;
+  border: 1px solid #00ff00;
+  font-family: 'Courier New', monospace;
+  cursor: pointer;
+}
+
 #inventory-items {
   list-style: none;
   padding-left: 0;
