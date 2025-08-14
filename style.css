@@ -61,3 +61,58 @@ body {
 #player-input-container button {
   cursor: pointer;
 }
+
+#inventory-menu {
+  cursor: pointer;
+}
+
+#inventory-ui {
+  display: none;
+  margin-top: 20px;
+}
+
+#inventory-container {
+  display: flex;
+}
+
+#inventory-left {
+  flex: 1;
+}
+
+#inventory-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+#inventory-tabs button {
+  background-color: #000;
+  color: #00ff00;
+  border: 1px solid #00ff00;
+  font-family: 'Courier New', monospace;
+  cursor: pointer;
+}
+
+#inventory-items {
+  list-style: none;
+  padding-left: 0;
+}
+
+#equipment-right {
+  flex: 1;
+  padding-left: 20px;
+}
+
+#equipment-right ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+#close-inventory {
+  margin-top: 20px;
+  background-color: #000;
+  color: #00ff00;
+  border: 1px solid #00ff00;
+  font-family: 'Courier New', monospace;
+  cursor: pointer;
+}
