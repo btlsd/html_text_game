@@ -2,6 +2,7 @@ const locationNameEl = document.getElementById('location-name');
 const locationDescEl = document.getElementById('location-description');
 const npcListEl = document.getElementById('npc-list');
 const npcInteractionListEl = document.getElementById('npc-interaction-list');
+const actionMenusEl = document.getElementById('action-menus');
 const actionListEl = document.getElementById('action-list');
 const npcSectionEl = document.getElementById('npcs');
 const actionSectionEl = document.getElementById('actions');
@@ -90,6 +91,7 @@ let currentMenu = 'main';
 let currentNpc = '';
 let currentCategory = '';
 let currentSubcategory = null;
+let actionMenuStack = [];
 
 function updateHeaders() {
   if (currentMenu === 'main') {
@@ -168,16 +170,41 @@ function displayMenu(listEl, items, onSelect) {
   }, 50);
 }
 
+function setActionMenu(level, items, onSelect) {
+  while (actionMenuStack.length <= level) {
+    const ul = document.createElement('ul');
+    ul.style.display = 'none';
+    actionMenusEl.appendChild(ul);
+    actionMenuStack.push({ ul, items: [], onSelect: null });
+  }
+  for (let i = actionMenuStack.length - 1; i > level; i--) {
+    actionMenusEl.removeChild(actionMenuStack[i].ul);
+    actionMenuStack.pop();
+  }
+  const levelObj = actionMenuStack[level];
+  displayMenu(levelObj.ul, items, (idx) => onSelect(idx));
+  levelObj.ul.style.display = 'block';
+  levelObj.items = items;
+  levelObj.onSelect = onSelect;
+}
+
+function clearActionMenusFrom(level) {
+  for (let i = actionMenuStack.length - 1; i >= level; i--) {
+    actionMenusEl.removeChild(actionMenuStack[i].ul);
+    actionMenuStack.pop();
+  }
+}
+
 function showMainMenu() {
   currentMenu = 'main';
   currentNpc = '';
   updateHeaders();
   renderNpcList();
-  actionListEl.innerHTML = '';
+  actionMenusEl.innerHTML = '';
+  actionMenuStack = [];
   npcInteractionListEl.innerHTML = '';
   npcInteractionListEl.style.display = 'none';
   npcListEl.querySelectorAll('li').forEach(li => li.classList.remove('selected'));
-  actionListEl.querySelectorAll('li').forEach(li => li.classList.remove('selected'));
   npcSectionEl.classList.remove('active');
   actionSectionEl.classList.remove('active');
   inventoryMenuEl.style.display = '';
@@ -238,12 +265,14 @@ function openNpcInteractions(npc, npcIndex) {
 function openActionMenu() {
   currentMenu = 'actions';
   updateHeaders();
-  const items = ['상태', '기술', '뒤로'];
-  displayMenu(actionListEl, items, (idx) => {
+  actionMenusEl.innerHTML = '';
+  actionMenuStack = [{ ul: actionListEl, items: [], onSelect: null }];
+  actionMenusEl.appendChild(actionListEl);
+  setActionMenu(0, ['이동', '메뉴', '뒤로'], (idx) => {
     if (idx === 0) {
-      openStatusMenu();
+      console.log('이동 선택됨');
     } else if (idx === 1) {
-      openSkillsMenu();
+      openActionMainMenu();
     } else {
       showMainMenu();
     }
@@ -252,19 +281,27 @@ function openActionMenu() {
   npcSectionEl.classList.remove('active');
 }
 
-function openSkillsMenu() {
-  currentMenu = 'skills';
-  updateHeaders();
-  const items = [...actions, '뒤로'];
-  displayMenu(actionListEl, items, (idx) => {
+function openActionMainMenu() {
+  setActionMenu(1, ['상태', '기술', '뒤로'], (idx) => {
+    if (idx === 0) {
+      openStatusMenu();
+    } else if (idx === 1) {
+      openActionSkillsMenu();
+    } else {
+      clearActionMenusFrom(1);
+      highlightItem(actionMenuStack[0].ul, -1);
+    }
+  });
+}
+
+function openActionSkillsMenu() {
+  setActionMenu(2, [...actions, '뒤로'], (idx) => {
     if (idx === actions.length) {
-      openActionMenu();
+      clearActionMenusFrom(2);
     } else {
       console.log(`Action selected: ${actions[idx]}`);
     }
   });
-  actionSectionEl.classList.add('active');
-  npcSectionEl.classList.remove('active');
 }
 
 function openStatusMenu() {
@@ -475,7 +512,7 @@ npcHeaderEl.addEventListener('click', () => {
 });
 
 actionHeaderEl.addEventListener('click', () => {
-  if (currentMenu === 'actions' || currentMenu === 'skills') {
+  if (currentMenu === 'actions') {
     showMainMenu();
   } else {
     openActionMenu();
@@ -518,19 +555,12 @@ function handleCommand() {
       console.log(`Interaction with ${currentNpc}: ${npcActions[num - 1]}`);
     }
   } else if (currentMenu === 'actions') {
-    if (num === 1) {
-      openStatusMenu();
-    } else if (num === 2) {
-      openSkillsMenu();
-    } else if (num === 3) {
-      showMainMenu();
-    }
-  } else if (currentMenu === 'skills') {
-    if (num === actions.length + 1) {
-      openActionMenu();
-    } else if (num > 0 && num <= actions.length) {
-      highlightItem(actionListEl, num - 1);
-      console.log(`Action selected: ${actions[num - 1]}`);
+    if (actionMenuStack.length > 0) {
+      const currentLevel = actionMenuStack[actionMenuStack.length - 1];
+      if (num > 0 && num <= currentLevel.items.length) {
+        highlightItem(currentLevel.ul, num - 1);
+        currentLevel.onSelect(num - 1);
+      }
     }
   }
 
