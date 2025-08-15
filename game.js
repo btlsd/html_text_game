@@ -27,6 +27,12 @@ const hpBarEl = document.getElementById('hp-bar');
 const hpTextEl = document.getElementById('hp-text');
 const staminaBarEl = document.getElementById('stamina-bar');
 const staminaTextEl = document.getElementById('stamina-text');
+const battleUIEl = document.getElementById('battle-ui');
+const enemyNameEl = document.getElementById('enemy-name');
+const enemyHpBarEl = document.getElementById('enemy-hp-bar');
+const enemyHpTextEl = document.getElementById('enemy-hp-text');
+const battleMenuEl = document.getElementById('battle-menu');
+const battleSubmenuEl = document.getElementById('battle-submenu');
 const playerCommandEl = document.getElementById('player-command');
 const submitCommandEl = document.getElementById('submit-command');
 const statusUIEl = document.getElementById('status-ui');
@@ -83,6 +89,10 @@ player.stamina = getMaxStamina();
 const enemies = {
   '전투용 허수아비': { name: '전투용 허수아비', hp: 30, agility: 2, attack: 5 }
 };
+
+const skills = ['강타'];
+let battleState = null;
+let battleItemList = [];
 
 let actions = [];
 let locations = {};
@@ -253,45 +263,142 @@ function getNpcActions(npc) {
 function startBattle(npc) {
   const enemyTemplate = enemies[npc];
   if (!enemyTemplate) return;
-  const enemy = { ...enemyTemplate };
-  console.log(`${enemy.name}와의 전투가 시작되었습니다!`);
+  battleState = {
+    enemy: { ...enemyTemplate, maxHp: enemyTemplate.hp },
+    defending: false,
+  };
+  document.getElementById('location').style.display = 'none';
+  npcSectionEl.style.display = 'none';
+  actionSectionEl.style.display = 'none';
+  inventoryMenuEl.style.display = 'none';
+  battleUIEl.style.display = 'block';
+  renderBattle();
+}
 
-  function playerTurn() {
-    const delay = 1000 / player.stats.agility;
-    setTimeout(() => {
-      enemy.hp -= 5;
-      console.log(`플레이어의 공격! ${enemy.name} HP: ${enemy.hp}`);
-      if (enemy.hp <= 0) {
-        console.log('플레이어가 승리했습니다!');
-        render();
-        return;
-      }
-      render();
-      enemyTurn();
-    }, delay);
+function renderBattle() {
+  if (!battleState) return;
+  const enemy = battleState.enemy;
+  enemyNameEl.textContent = enemy.name;
+  enemyHpBarEl.style.width = `${(enemy.hp / enemy.maxHp) * 100}%`;
+  enemyHpTextEl.textContent = `${enemy.hp}/${enemy.maxHp}`;
+  renderBattleMenu();
+}
+
+function renderBattleMenu() {
+  currentMenu = 'battle';
+  const options = ['공격', '방어', '기술', '아이템', '도주'];
+  displayMenu(battleMenuEl, options, (idx) => {
+    if (idx === 0) battleAttack();
+    else if (idx === 1) battleDefend();
+    else if (idx === 2) openBattleSkillMenu();
+    else if (idx === 3) openBattleItemMenu();
+    else if (idx === 4) attemptRun();
+  });
+  battleSubmenuEl.style.display = 'none';
+}
+
+function battleAttack() {
+  const damage = player.stats.strength + 5;
+  battleState.enemy.hp -= damage;
+  if (battleState.enemy.hp <= 0) {
+    endBattle(true);
+    return;
   }
+  renderBattle();
+  enemyTurn();
+}
 
-  function enemyTurn() {
-    const delay = 1000 / enemy.agility;
-    setTimeout(() => {
-      player.hp -= enemy.attack;
-      if (player.hp < 0) player.hp = 0;
-      console.log(`${enemy.name}의 공격! 플레이어 HP: ${player.hp}`);
-      if (player.hp <= 0) {
-        console.log('플레이어가 패배했습니다...');
-        render();
-        return;
-      }
-      render();
-      playerTurn();
-    }, delay);
+function battleDefend() {
+  battleState.defending = true;
+  enemyTurn();
+}
+
+function openBattleSkillMenu() {
+  currentMenu = 'battleSkill';
+  const items = [...skills, '뒤로'];
+  displayMenu(battleSubmenuEl, items, (idx) => {
+    if (idx === skills.length) {
+      renderBattleMenu();
+    } else {
+      useSkill(skills[idx]);
+    }
+  });
+  battleSubmenuEl.style.display = 'block';
+}
+
+function useSkill(name) {
+  if (name === '강타') {
+    const damage = player.stats.strength * 2;
+    battleState.enemy.hp -= damage;
   }
+  if (battleState.enemy.hp <= 0) {
+    endBattle(true);
+    return;
+  }
+  renderBattle();
+  enemyTurn();
+}
 
-  if (player.stats.agility >= enemy.agility) {
-    playerTurn();
+function openBattleItemMenu() {
+  currentMenu = 'battleItem';
+  battleItemList = inventory.filter(id => items[id].type === 'medicine');
+  const labels = battleItemList.map(id => items[id].name);
+  displayMenu(battleSubmenuEl, [...labels, '뒤로'], (idx) => {
+    if (idx === battleItemList.length) {
+      renderBattleMenu();
+    } else {
+      useBattleItem(battleItemList[idx]);
+    }
+  });
+  battleSubmenuEl.style.display = 'block';
+}
+
+function useBattleItem(id) {
+  const item = items[id];
+  if (item.properties && item.properties.heal) {
+    player.hp += item.properties.heal;
+    const maxHp = getMaxHp();
+    if (player.hp > maxHp) player.hp = maxHp;
+  }
+  const index = inventory.indexOf(id);
+  if (index !== -1) inventory.splice(index, 1);
+  render();
+  renderBattle();
+  enemyTurn();
+}
+
+function attemptRun() {
+  const enemy = battleState.enemy;
+  const chance = player.stats.agility / (player.stats.agility + enemy.agility);
+  if (Math.random() < chance) {
+    endBattle(null);
   } else {
     enemyTurn();
   }
+}
+
+function enemyTurn() {
+  const enemy = battleState.enemy;
+  let damage = enemy.attack;
+  if (battleState.defending) {
+    damage = Math.max(0, damage - player.stats.endurance);
+    battleState.defending = false;
+  }
+  player.hp -= damage;
+  if (player.hp < 0) player.hp = 0;
+  render();
+  if (player.hp <= 0) {
+    endBattle(false);
+    return;
+  }
+  renderBattleMenu();
+}
+
+function endBattle(victory) {
+  battleUIEl.style.display = 'none';
+  battleSubmenuEl.style.display = 'none';
+  battleState = null;
+  showMainMenu();
 }
 
 function openNpcInteractions(npc, npcIndex) {
@@ -608,7 +715,12 @@ function handleCommand() {
       openNpcMenu();
     } else if (num > 0 && num <= npcActions.length) {
       highlightItem(npcInteractionListEl, num - 1);
-      console.log(`Interaction with ${currentNpc}: ${npcActions[num - 1]}`);
+      const action = npcActions[num - 1];
+      if (action === '전투') {
+        startBattle(currentNpc);
+      } else {
+        console.log(`Interaction with ${currentNpc}: ${action}`);
+      }
     }
   } else if (currentMenu === 'actions') {
     if (actionMenuStack.length > 0) {
@@ -617,6 +729,30 @@ function handleCommand() {
         highlightItem(currentLevel.ul, num - 1);
         currentLevel.onSelect(num - 1);
       }
+    }
+  } else if (currentMenu === 'battle') {
+    if (num === 1) {
+      battleAttack();
+    } else if (num === 2) {
+      battleDefend();
+    } else if (num === 3) {
+      openBattleSkillMenu();
+    } else if (num === 4) {
+      openBattleItemMenu();
+    } else if (num === 5) {
+      attemptRun();
+    }
+  } else if (currentMenu === 'battleSkill') {
+    if (num === skills.length + 1) {
+      renderBattleMenu();
+    } else if (num > 0 && num <= skills.length) {
+      useSkill(skills[num - 1]);
+    }
+  } else if (currentMenu === 'battleItem') {
+    if (num === battleItemList.length + 1) {
+      renderBattleMenu();
+    } else if (num > 0 && num <= battleItemList.length) {
+      useBattleItem(battleItemList[num - 1]);
     }
   }
 

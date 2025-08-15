@@ -219,3 +219,29 @@ body {
   font-family: 'Courier New', monospace;
   cursor: pointer;
 }
+
+#battle-ui {
+  margin-top: 20px;
+}
+
+#battle-menus {
+  display: flex;
+}
+
+#battle-menus ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 0 20px 0 0;
+}
+
+.enemy-text {
+  color: #ff0000;
+}
+
+.enemy-bar-container {
+  border: 1px solid #ff0000;
+}
+
+.enemy-bar {
+  background-color: #ff0000;
+}
