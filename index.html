@@ -42,6 +42,22 @@
           <span id="stamina-text"></span>
         </div>
       </div>
+    <div id="battle-ui" style="display:none;">
+      <div id="enemy-info">
+        <h3 id="enemy-name" class="enemy-text"></h3>
+        <div class="resource">
+          <span class="resource-label enemy-text">HP</span>
+          <div class="bar-container enemy-bar-container">
+            <div id="enemy-hp-bar" class="bar enemy-bar"></div>
+          </div>
+          <span id="enemy-hp-text" class="enemy-text"></span>
+        </div>
+      </div>
+      <div id="battle-menus">
+        <ul id="battle-menu"></ul>
+        <ul id="battle-submenu" style="display:none;"></ul>
+      </div>
+    </div>
     <div id="player-input-container">
       <input type="text" id="player-command" placeholder="명령을 입력하세요" />
       <button id="submit-command">입력</button>
