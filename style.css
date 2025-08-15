@@ -36,6 +36,10 @@ body {
   display: none;
 }
 
+#action-menus {
+  display: flex;
+}
+
 .menu.active ul {
   display: block;
 }
