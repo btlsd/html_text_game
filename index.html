@@ -25,21 +25,23 @@
     <div id="inventory-menu" class="menu">
       <h3 id="inventory-header"></h3>
     </div>
-    <div id="status">
-      <h3>상태</h3>
-      <div class="resource">
-        <div class="bar-container">
-          <div id="hp-bar" class="bar"></div>
+      <div id="status">
+        <h3>상태</h3>
+        <div class="resource">
+          <span class="resource-label">체력</span>
+          <div class="bar-container">
+            <div id="hp-bar" class="bar"></div>
+          </div>
+          <span id="hp-text"></span>
         </div>
-        <span id="hp-text"></span>
-      </div>
-      <div class="resource">
-        <div class="bar-container">
-          <div id="stamina-bar" class="bar"></div>
+        <div class="resource">
+          <span class="resource-label">기력</span>
+          <div class="bar-container">
+            <div id="stamina-bar" class="bar"></div>
+          </div>
+          <span id="stamina-text"></span>
         </div>
-        <span id="stamina-text"></span>
       </div>
-    </div>
     <div id="player-input-container">
       <input type="text" id="player-command" placeholder="명령을 입력하세요" />
       <button id="submit-command">입력</button>

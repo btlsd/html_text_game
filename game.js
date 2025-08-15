@@ -80,6 +80,10 @@ function getMaxStamina() {
 player.hp = getMaxHp();
 player.stamina = getMaxStamina();
 
+const enemies = {
+  '전투용 허수아비': { name: '전투용 허수아비', hp: 30, agility: 2, attack: 5 }
+};
+
 let actions = [];
 let locations = {};
 let items = {};
@@ -240,7 +244,54 @@ function openNpcMenu() {
 }
 
 function getNpcActions(npc) {
+  if (npc === '전투용 허수아비') {
+    return ['전투'];
+  }
   return ['대화', '관찰'];
+}
+
+function startBattle(npc) {
+  const enemyTemplate = enemies[npc];
+  if (!enemyTemplate) return;
+  const enemy = { ...enemyTemplate };
+  console.log(`${enemy.name}와의 전투가 시작되었습니다!`);
+
+  function playerTurn() {
+    const delay = 1000 / player.stats.agility;
+    setTimeout(() => {
+      enemy.hp -= 5;
+      console.log(`플레이어의 공격! ${enemy.name} HP: ${enemy.hp}`);
+      if (enemy.hp <= 0) {
+        console.log('플레이어가 승리했습니다!');
+        render();
+        return;
+      }
+      render();
+      enemyTurn();
+    }, delay);
+  }
+
+  function enemyTurn() {
+    const delay = 1000 / enemy.agility;
+    setTimeout(() => {
+      player.hp -= enemy.attack;
+      if (player.hp < 0) player.hp = 0;
+      console.log(`${enemy.name}의 공격! 플레이어 HP: ${player.hp}`);
+      if (player.hp <= 0) {
+        console.log('플레이어가 패배했습니다...');
+        render();
+        return;
+      }
+      render();
+      playerTurn();
+    }, delay);
+  }
+
+  if (player.stats.agility >= enemy.agility) {
+    playerTurn();
+  } else {
+    enemyTurn();
+  }
 }
 
 function openNpcInteractions(npc, npcIndex) {
@@ -254,7 +305,12 @@ function openNpcInteractions(npc, npcIndex) {
     if (idx === npcActions.length) {
       openNpcMenu();
     } else {
-      console.log(`Interaction with ${npc}: ${npcActions[idx]}`);
+      const action = npcActions[idx];
+      if (action === '전투') {
+        startBattle(npc);
+      } else {
+        console.log(`Interaction with ${npc}: ${action}`);
+      }
     }
   });
   npcInteractionListEl.style.display = 'block';

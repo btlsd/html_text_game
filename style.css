@@ -57,11 +57,15 @@ body {
   margin-top: 20px;
 }
 
-.resource {
-  display: flex;
-  align-items: center;
-  margin-bottom: 5px;
-}
+  .resource {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
+  }
+
+  .resource-label {
+    margin-right: 5px;
+  }
 
 .bar-container {
   width: 100px;
