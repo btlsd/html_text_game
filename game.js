@@ -33,6 +33,11 @@ const enemyHpBarEl = document.getElementById('enemy-hp-bar');
 const enemyHpTextEl = document.getElementById('enemy-hp-text');
 const battleMenuEl = document.getElementById('battle-menu');
 const battleSubmenuEl = document.getElementById('battle-submenu');
+const battleLogEl = document.getElementById('battle-log');
+const playerHpBarBattleEl = document.getElementById('player-hp-bar');
+const playerHpTextBattleEl = document.getElementById('player-hp-text');
+const playerStaminaBarBattleEl = document.getElementById('player-stamina-bar');
+const playerStaminaTextBattleEl = document.getElementById('player-stamina-text');
 const playerCommandEl = document.getElementById('player-command');
 const submitCommandEl = document.getElementById('submit-command');
 const statusUIEl = document.getElementById('status-ui');
@@ -41,6 +46,13 @@ const extraStatsEl = document.getElementById('extra-stats');
 const statusDescEl = document.getElementById('status-description');
 const statusConfirmEl = document.getElementById('status-confirm');
 const closeStatusEl = document.getElementById('close-status');
+const flashOverlayEl = document.getElementById('flash-overlay');
+const battleResultEl = document.getElementById('battle-result');
+const battleResultStatsEl = document.getElementById('battle-result-stats');
+const battleOutcomeEl = document.getElementById('battle-outcome');
+const battleResultCloseEl = document.getElementById('battle-result-close');
+const xpBarEl = document.getElementById('xp-bar');
+const xpTextEl = document.getElementById('xp-text');
 
 const slotDisplayNames = {
   head: '머리',
@@ -72,7 +84,10 @@ const player = {
   hp: 0,
   stamina: 0,
   extraStats: 0,
-  tempStats: {}
+  tempStats: {},
+  level: 1,
+  xp: 0,
+  totalXp: 0
 };
 
 function getMaxHp() {
@@ -83,14 +98,18 @@ function getMaxStamina() {
   return player.stats.endurance * 8 + player.stats.charisma * 4;
 }
 
+function getXpForNextLevel() {
+  return player.level * 100;
+}
+
 player.hp = getMaxHp();
 player.stamina = getMaxStamina();
 
 const enemies = {
-  '전투용 허수아비': { name: '전투용 허수아비', hp: 30, agility: 2, attack: 5 }
+  '전투용 허수아비': { name: '전투용 허수아비', hp: 30, agility: 2, attack: 5, xp: 20 }
 };
 
-const skills = ['강타'];
+const skills = [{ name: '강타', staminaCost: 10 }];
 let battleState = null;
 let battleItemList = [];
 
@@ -266,12 +285,19 @@ function startBattle(npc) {
   battleState = {
     enemy: { ...enemyTemplate, maxHp: enemyTemplate.hp },
     defending: false,
+    log: [],
+    stats: { damageDealt: 0, damageTaken: 0, skillUsage: {} },
+    preXp: player.xp,
+    preXpNeeded: getXpForNextLevel()
   };
   document.getElementById('location').style.display = 'none';
   npcSectionEl.style.display = 'none';
   actionSectionEl.style.display = 'none';
   inventoryMenuEl.style.display = 'none';
-  battleUIEl.style.display = 'block';
+  document.getElementById('status').style.display = 'none';
+  battleResultEl.style.display = 'none';
+  battleLogEl.innerHTML = '';
+  battleUIEl.style.display = 'flex';
   renderBattle();
 }
 
@@ -281,6 +307,13 @@ function renderBattle() {
   enemyNameEl.textContent = enemy.name;
   enemyHpBarEl.style.width = `${(enemy.hp / enemy.maxHp) * 100}%`;
   enemyHpTextEl.textContent = `${enemy.hp}/${enemy.maxHp}`;
+  battleLogEl.innerHTML = battleState.log.slice(-20).join('<br>');
+  const maxHp = getMaxHp();
+  playerHpBarBattleEl.style.width = `${(player.hp / maxHp) * 100}%`;
+  playerHpTextBattleEl.textContent = `${player.hp}/${maxHp}`;
+  const maxStamina = getMaxStamina();
+  playerStaminaBarBattleEl.style.width = `${(player.stamina / maxStamina) * 100}%`;
+  playerStaminaTextBattleEl.textContent = `${player.stamina}/${maxStamina}`;
   renderBattleMenu();
 }
 
@@ -300,6 +333,13 @@ function renderBattleMenu() {
 function battleAttack() {
   const damage = player.stats.strength + 5;
   battleState.enemy.hp -= damage;
+  battleState.stats.damageDealt += damage;
+  const stat = battleState.stats.skillUsage['공격'] || { count: 0, damage: 0 };
+  stat.count += 1;
+  stat.damage += damage;
+  battleState.stats.skillUsage['공격'] = stat;
+  battleState.log.push(`${battleState.enemy.name}에게 ${damage}의 피해를 입혔다.`);
+  flashScreen('white', damage);
   if (battleState.enemy.hp <= 0) {
     endBattle(true);
     return;
@@ -315,8 +355,8 @@ function battleDefend() {
 
 function openBattleSkillMenu() {
   currentMenu = 'battleSkill';
-  const items = [...skills, '뒤로'];
-  displayMenu(battleSubmenuEl, items, (idx) => {
+  const items = skills.map(s => `${s.name} (${s.staminaCost} 기력)`);
+  displayMenu(battleSubmenuEl, [...items, '뒤로'], (idx) => {
     if (idx === skills.length) {
       renderBattleMenu();
     } else {
@@ -326,11 +366,26 @@ function openBattleSkillMenu() {
   battleSubmenuEl.style.display = 'block';
 }
 
-function useSkill(name) {
-  if (name === '강타') {
-    const damage = player.stats.strength * 2;
-    battleState.enemy.hp -= damage;
+function useSkill(skill) {
+  if (player.stamina < skill.staminaCost) {
+    battleState.log.push('기력이 부족합니다.');
+    renderBattle();
+    renderBattleMenu();
+    return;
   }
+  player.stamina -= skill.staminaCost;
+  let damage = 0;
+  if (skill.name === '강타') {
+    damage = player.stats.strength * 2;
+  }
+  battleState.enemy.hp -= damage;
+  battleState.stats.damageDealt += damage;
+  const stat = battleState.stats.skillUsage[skill.name] || { count: 0, damage: 0 };
+  stat.count += 1;
+  stat.damage += damage;
+  battleState.stats.skillUsage[skill.name] = stat;
+  battleState.log.push(`${skill.name} 사용! ${damage}의 피해를 입혔다.`);
+  flashScreen('white', damage, skill.hits || 1);
   if (battleState.enemy.hp <= 0) {
     endBattle(true);
     return;
@@ -386,19 +441,69 @@ function enemyTurn() {
   }
   player.hp -= damage;
   if (player.hp < 0) player.hp = 0;
+  battleState.stats.damageTaken += damage;
+  battleState.log.push(`${enemy.name}가 당신에게 ${damage}의 피해를 입혔다.`);
+  flashScreen('red', damage);
   render();
   if (player.hp <= 0) {
     endBattle(false);
     return;
   }
-  renderBattleMenu();
+  renderBattle();
+}
+
+function flashScreen(color, damage, count = 1) {
+  const duration = Math.min(100 + damage * 20, 1000);
+  let flashes = 0;
+  const doFlash = () => {
+    flashOverlayEl.style.backgroundColor = color;
+    flashOverlayEl.style.opacity = '1';
+    setTimeout(() => {
+      flashOverlayEl.style.opacity = '0';
+      flashes++;
+      if (flashes < count) {
+        setTimeout(doFlash, duration);
+      }
+    }, duration);
+  };
+  doFlash();
 }
 
 function endBattle(victory) {
   battleUIEl.style.display = 'none';
   battleSubmenuEl.style.display = 'none';
+  const stats = battleState.stats;
+  const enemy = battleState.enemy;
+  const xpGain = victory ? (enemy.xp || 0) : 0;
+  battleOutcomeEl.textContent = victory === null ? '도주' : (victory ? '승리' : '패배');
+  const lines = [];
+  lines.push(`가한 데미지: ${stats.damageDealt}`);
+  lines.push(`받은 데미지: ${stats.damageTaken}`);
+  Object.keys(stats.skillUsage).forEach(name => {
+    const s = stats.skillUsage[name];
+    lines.push(`${name}: ${s.count}회, ${s.damage} 데미지`);
+  });
+  lines.push(`획득 경험치: ${xpGain}`);
+  battleResultStatsEl.innerHTML = lines.map(l => `<li>${l}</li>`).join('');
+  const preRatio = battleState.preXp / battleState.preXpNeeded;
+  player.totalXp += xpGain;
+  player.xp += xpGain;
+  let xpNeeded = getXpForNextLevel();
+  while (player.xp >= xpNeeded) {
+    player.xp -= xpNeeded;
+    player.level++;
+    xpNeeded = getXpForNextLevel();
+  }
+  const postRatio = player.xp / xpNeeded;
+  xpBarEl.style.width = `${preRatio * 100}%`;
+  xpTextEl.textContent = `${player.xp}/${xpNeeded}`;
+  setTimeout(() => {
+    xpBarEl.style.transition = 'width 0.5s';
+    xpBarEl.style.width = `${postRatio * 100}%`;
+  }, 100);
+  battleResultEl.style.display = 'block';
+  currentMenu = 'battleResult';
   battleState = null;
-  showMainMenu();
 }
 
 function openNpcInteractions(npc, npcIndex) {
@@ -770,4 +875,9 @@ inventoryHeaderEl.addEventListener('click', openInventory);
 closeInventoryEl.addEventListener('click', closeInventory);
 statusConfirmEl.addEventListener('click', confirmStatAllocation);
 closeStatusEl.addEventListener('click', closeStatusMenu);
+battleResultCloseEl.addEventListener('click', () => {
+  battleResultEl.style.display = 'none';
+  showMainMenu();
+  render();
+});
 
