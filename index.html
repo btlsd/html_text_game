@@ -43,20 +43,54 @@
         </div>
       </div>
     <div id="battle-ui" style="display:none;">
-      <div id="enemy-info">
-        <h3 id="enemy-name" class="enemy-text"></h3>
-        <div class="resource">
-          <span class="resource-label enemy-text">HP</span>
-          <div class="bar-container enemy-bar-container">
-            <div id="enemy-hp-bar" class="bar enemy-bar"></div>
+      <div id="battle-log"></div>
+      <div id="battle-main">
+        <div id="enemy-info">
+          <h3 id="enemy-name" class="enemy-text"></h3>
+          <div class="resource">
+            <span class="resource-label enemy-text">HP</span>
+            <div class="bar-container enemy-bar-container">
+              <div id="enemy-hp-bar" class="bar enemy-bar"></div>
+            </div>
+            <span id="enemy-hp-text" class="enemy-text"></span>
           </div>
-          <span id="enemy-hp-text" class="enemy-text"></span>
+        </div>
+        <div id="battle-menus">
+          <ul id="battle-menu"></ul>
+          <ul id="battle-submenu" style="display:none;"></ul>
+        </div>
+        <div id="player-info">
+          <h3>플레이어</h3>
+          <div class="resource">
+            <span class="resource-label">HP</span>
+            <div class="bar-container">
+              <div id="player-hp-bar" class="bar"></div>
+            </div>
+            <span id="player-hp-text"></span>
+          </div>
+          <div class="resource">
+            <span class="resource-label">기력</span>
+            <div class="bar-container">
+              <div id="player-stamina-bar" class="bar"></div>
+            </div>
+            <span id="player-stamina-text"></span>
+          </div>
         </div>
       </div>
-      <div id="battle-menus">
-        <ul id="battle-menu"></ul>
-        <ul id="battle-submenu" style="display:none;"></ul>
+    </div>
+
+    <div id="battle-result" style="display:none;">
+      <h3>전투 종료</h3>
+      <p id="battle-outcome"></p>
+      <ul id="battle-result-stats"></ul>
+      <div class="resource">
+        <span class="resource-label">경험치</span>
+        <div class="bar-container">
+          <div id="xp-bar" class="bar"></div>
+        </div>
+        <span id="xp-text"></span>
       </div>
+      <button id="battle-result-close">확인</button>
     </div>
     <div id="player-input-container">
       <input type="text" id="player-command" placeholder="명령을 입력하세요" />
@@ -99,6 +133,7 @@
       </div>
     </div>
   </div>
+  <div id="flash-overlay"></div>
   <script src="game.js"></script>
 </body>
 </html>
