@@ -5,7 +5,17 @@
       "type": "weapon",
       "subtype": "melee",
       "properties": {
-        "attack": 5
+        "strWeight": 70,
+        "multiplier": 1,
+        "bonus": 5
+      }
+    },
+    "old_pistol": {
+      "name": "낡은 권총",
+      "type": "weapon",
+      "subtype": "firearm",
+      "properties": {
+        "fixedDamage": 15
       }
     },
     "cloth_armor": {

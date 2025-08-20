@@ -277,6 +277,11 @@ body {
   background-color: #ffff00;
 }
 
+#player-turn-bar {
+  background-color: #ffff00;
+  transition: width 0.1s linear;
+}
+
 .enemy-text {
   color: #ff0000;
 }
