@@ -288,7 +288,12 @@ function startBattle(npc) {
     log: [],
     stats: { damageDealt: 0, damageTaken: 0, skillUsage: {} },
     preXp: player.xp,
-    preXpNeeded: getXpForNextLevel()
+    preXpNeeded: getXpForNextLevel(),
+    playerGauge: 0,
+    enemyGauge: 0,
+    playerReady: false,
+    processing: false,
+    intervalId: null
   };
   document.getElementById('location').style.display = 'none';
   npcSectionEl.style.display = 'none';
@@ -299,6 +304,7 @@ function startBattle(npc) {
   battleLogEl.innerHTML = '';
   battleUIEl.style.display = 'flex';
   renderBattle();
+  battleState.intervalId = setInterval(updateBattleTurn, 100);
 }
 
 function renderBattle() {
@@ -307,7 +313,6 @@ function renderBattle() {
   enemyNameEl.textContent = enemy.name;
   enemyHpBarEl.style.width = `${(enemy.hp / enemy.maxHp) * 100}%`;
   enemyHpTextEl.textContent = `${enemy.hp}/${enemy.maxHp}`;
-  battleLogEl.innerHTML = battleState.log.slice(-20).join('<br>');
   const maxHp = getMaxHp();
   playerHpBarBattleEl.style.width = `${(player.hp / maxHp) * 100}%`;
   playerHpTextBattleEl.textContent = `${player.hp}/${maxHp}`;
@@ -318,6 +323,13 @@ function renderBattle() {
 }
 
 function renderBattleMenu() {
+  if (!battleState) return;
+  if (!battleState.playerReady) {
+    currentMenu = 'battleWait';
+    battleMenuEl.innerHTML = '<li>행동 대기중...</li>';
+    battleSubmenuEl.style.display = 'none';
+    return;
+  }
   currentMenu = 'battle';
   const options = ['공격', '방어', '기술', '아이템', '도주'];
   displayMenu(battleMenuEl, options, (idx) => {
@@ -330,7 +342,11 @@ function renderBattleMenu() {
   battleSubmenuEl.style.display = 'none';
 }
 
-function battleAttack() {
+async function battleAttack() {
+  if (!battleState || !battleState.playerReady) return;
+  battleState.processing = true;
+  battleState.playerReady = false;
+  battleState.playerGauge = 0;
   const damage = player.stats.strength + 5;
   battleState.enemy.hp -= damage;
   battleState.stats.damageDealt += damage;
@@ -338,19 +354,23 @@ function battleAttack() {
   stat.count += 1;
   stat.damage += damage;
   battleState.stats.skillUsage['공격'] = stat;
-  battleState.log.push(`${battleState.enemy.name}에게 ${damage}의 피해를 입혔다.`);
-  flashScreen('white', damage);
+  const message = `${battleState.enemy.name}에게 ${damage}의 피해를 입혔다.`;
+  await flashScreen('white', damage);
+  renderBattle();
+  await typeBattleLog(message);
   if (battleState.enemy.hp <= 0) {
     endBattle(true);
     return;
   }
-  renderBattle();
-  enemyTurn();
+  battleState.processing = false;
 }
 
 function battleDefend() {
+  if (!battleState || !battleState.playerReady) return;
+  battleState.playerReady = false;
+  battleState.playerGauge = 0;
   battleState.defending = true;
-  enemyTurn();
+  renderBattleMenu();
 }
 
 function openBattleSkillMenu() {
@@ -366,13 +386,16 @@ function openBattleSkillMenu() {
   battleSubmenuEl.style.display = 'block';
 }
 
-function useSkill(skill) {
+async function useSkill(skill) {
+  if (!battleState || !battleState.playerReady) return;
   if (player.stamina < skill.staminaCost) {
-    battleState.log.push('기력이 부족합니다.');
-    renderBattle();
+    await typeBattleLog('기력이 부족합니다.');
     renderBattleMenu();
     return;
   }
+  battleState.processing = true;
+  battleState.playerReady = false;
+  battleState.playerGauge = 0;
   player.stamina -= skill.staminaCost;
   let damage = 0;
   if (skill.name === '강타') {
@@ -384,14 +407,15 @@ function useSkill(skill) {
   stat.count += 1;
   stat.damage += damage;
   battleState.stats.skillUsage[skill.name] = stat;
-  battleState.log.push(`${skill.name} 사용! ${damage}의 피해를 입혔다.`);
-  flashScreen('white', damage, skill.hits || 1);
+  const message = `${skill.name} 사용! ${damage}의 피해를 입혔다.`;
+  await flashScreen('white', damage, skill.hits || 1);
+  renderBattle();
+  await typeBattleLog(message);
   if (battleState.enemy.hp <= 0) {
     endBattle(true);
     return;
   }
-  renderBattle();
-  enemyTurn();
+  battleState.processing = false;
 }
 
 function openBattleItemMenu() {
@@ -408,7 +432,11 @@ function openBattleItemMenu() {
   battleSubmenuEl.style.display = 'block';
 }
 
-function useBattleItem(id) {
+async function useBattleItem(id) {
+  if (!battleState || !battleState.playerReady) return;
+  battleState.processing = true;
+  battleState.playerReady = false;
+  battleState.playerGauge = 0;
   const item = items[id];
   if (item.properties && item.properties.heal) {
     player.hp += item.properties.heal;
@@ -419,20 +447,29 @@ function useBattleItem(id) {
   if (index !== -1) inventory.splice(index, 1);
   render();
   renderBattle();
-  enemyTurn();
+  await typeBattleLog(`${items[id].name} 사용!`);
+  renderBattleMenu();
+  battleState.processing = false;
 }
 
-function attemptRun() {
+async function attemptRun() {
+  if (!battleState || !battleState.playerReady) return;
+  battleState.processing = true;
+  battleState.playerReady = false;
+  battleState.playerGauge = 0;
   const enemy = battleState.enemy;
   const chance = player.stats.agility / (player.stats.agility + enemy.agility);
   if (Math.random() < chance) {
     endBattle(null);
   } else {
-    enemyTurn();
+    await typeBattleLog('도주에 실패했다!');
   }
+  renderBattleMenu();
+  battleState.processing = false;
 }
 
-function enemyTurn() {
+async function enemyTurn() {
+  if (!battleState) return;
   const enemy = battleState.enemy;
   let damage = enemy.attack;
   if (battleState.defending) {
@@ -442,34 +479,79 @@ function enemyTurn() {
   player.hp -= damage;
   if (player.hp < 0) player.hp = 0;
   battleState.stats.damageTaken += damage;
-  battleState.log.push(`${enemy.name}가 당신에게 ${damage}의 피해를 입혔다.`);
-  flashScreen('red', damage);
+  const message = `${enemy.name}가 당신에게 ${damage}의 피해를 입혔다.`;
+  await flashScreen('red', damage);
   render();
+  renderBattle();
+  await typeBattleLog(message);
   if (player.hp <= 0) {
     endBattle(false);
     return;
   }
-  renderBattle();
 }
 
 function flashScreen(color, damage, count = 1) {
   const duration = Math.min(100 + damage * 20, 1000);
-  let flashes = 0;
-  const doFlash = () => {
-    flashOverlayEl.style.backgroundColor = color;
-    flashOverlayEl.style.opacity = '1';
-    setTimeout(() => {
-      flashOverlayEl.style.opacity = '0';
-      flashes++;
-      if (flashes < count) {
-        setTimeout(doFlash, duration);
+  return new Promise(resolve => {
+    let flashes = 0;
+    const doFlash = () => {
+      flashOverlayEl.style.backgroundColor = color;
+      flashOverlayEl.style.opacity = '1';
+      setTimeout(() => {
+        flashOverlayEl.style.opacity = '0';
+        flashes++;
+        if (flashes < count) {
+          setTimeout(doFlash, duration);
+        } else {
+          setTimeout(resolve, duration);
+        }
+      }, duration);
+    };
+    doFlash();
+  });
+}
+
+function typeBattleLog(message) {
+  return new Promise(resolve => {
+    const line = document.createElement('div');
+    battleLogEl.appendChild(line);
+    battleState.log.push(message);
+    let i = 0;
+    const typeNext = () => {
+      if (i < message.length) {
+        line.textContent += message[i++];
+        setTimeout(typeNext, 20);
+      } else {
+        battleLogEl.scrollTop = battleLogEl.scrollHeight;
+        resolve();
       }
-    }, duration);
-  };
-  doFlash();
+    };
+    typeNext();
+  });
+}
+
+function updateBattleTurn() {
+  if (!battleState || battleState.processing) return;
+  if (!battleState.playerReady) {
+    battleState.playerGauge += player.stats.agility;
+    if (battleState.playerGauge >= 100) {
+      battleState.playerGauge = 100;
+      battleState.playerReady = true;
+      renderBattleMenu();
+    }
+  }
+  battleState.enemyGauge += battleState.enemy.agility;
+  if (battleState.enemyGauge >= 100) {
+    battleState.enemyGauge -= 100;
+    battleState.processing = true;
+    enemyTurn().then(() => {
+      if (battleState) battleState.processing = false;
+    });
+  }
 }
 
 function endBattle(victory) {
+  if (battleState.intervalId) clearInterval(battleState.intervalId);
   battleUIEl.style.display = 'none';
   battleSubmenuEl.style.display = 'none';
   const stats = battleState.stats;
