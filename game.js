@@ -117,18 +117,19 @@ function getMaxStamina() {
 function evaluateCondition(cond) {
   if (!cond) return true;
   if (typeof cond === 'string') {
-    return player.conditions.has(cond);
+    const def = conditionDefs[cond];
+    return def ? evaluateCondition(def) : player.conditions.has(cond);
   }
   if (Array.isArray(cond)) {
     return cond.every(evaluateCondition);
   }
-  if (cond.and) {
-    return cond.and.every(evaluateCondition);
+  if (cond.all) {
+    return cond.all.every(evaluateCondition);
   }
-  if (cond.or) {
-    return cond.or.some(evaluateCondition);
+  if (cond.any) {
+    return cond.any.some(evaluateCondition);
   }
-  return true;
+  return false;
 }
 
 function getXpForNextLevel() {
@@ -176,6 +177,7 @@ let battleItemList = [];
 
 let actions = [];
 let skills = [];
+let conditionDefs = {};
 let locations = {};
 let items = {};
 let inventory = [];
@@ -1001,7 +1003,8 @@ function closeInventory() {
 }
 
 async function loadData() {
-  const [actionData, skillData, locationData, inventoryData, itemData, npcInfo] = await Promise.all([
+  const [conditionData, actionData, skillData, locationData, inventoryData, itemData, npcInfo] = await Promise.all([
+    fetch('data/conditions.json').then(res => res.json()),
     fetch('data/actions.json').then(res => res.json()),
     fetch('data/skills.json').then(res => res.json()),
     fetch('data/locations.json').then(res => res.json()),
@@ -1010,6 +1013,7 @@ async function loadData() {
     fetch('data/npcs.json').then(res => res.json())
   ]);
 
+  conditionDefs = conditionData.conditions;
   actions = actionData.actions;
   skills = skillData.skills;
   locations = locationData.locations;

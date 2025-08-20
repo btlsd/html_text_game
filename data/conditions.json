@@ -1,0 +1,7 @@
+{
+  "conditions": {
+    "melee_or_blunt_weapon": {
+      "any": ["weapon_melee", "weapon_blunt"]
+    }
+  }
+}
