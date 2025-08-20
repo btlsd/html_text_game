@@ -75,7 +75,12 @@ const statDisplayNames = {
 };
 
 const conditionDisplayNames = {
-  guild_access: '길드 출입 자격'
+  guild_access: '길드 출입 자격',
+  weapon: '무기 장착',
+  weapon_melee: '냉병기 장착',
+  weapon_blunt: '둔기 장착',
+  weapon_firearm: '화기 장착',
+  weapon_energy: '에너지무기 장착'
 };
 
 const player = {
@@ -107,6 +112,23 @@ function getMaxHp() {
 
 function getMaxStamina() {
   return player.stats.endurance * 8 + player.stats.charisma * 4;
+}
+
+function evaluateCondition(cond) {
+  if (!cond) return true;
+  if (typeof cond === 'string') {
+    return player.conditions.has(cond);
+  }
+  if (Array.isArray(cond)) {
+    return cond.every(evaluateCondition);
+  }
+  if (cond.and) {
+    return cond.and.every(evaluateCondition);
+  }
+  if (cond.or) {
+    return cond.or.some(evaluateCondition);
+  }
+  return true;
 }
 
 function getXpForNextLevel() {
@@ -148,11 +170,12 @@ player.stamina = getMaxStamina();
 
 let npcData = {};
 
-const skills = [{ name: '강타', staminaCost: 10 }];
+const battleSkills = [{ name: '강타', staminaCost: 10 }];
 let battleState = null;
 let battleItemList = [];
 
 let actions = [];
+let skills = [];
 let locations = {};
 let items = {};
 let inventory = [];
@@ -430,12 +453,12 @@ function battleDefend() {
 
 function openBattleSkillMenu() {
   currentMenu = 'battleSkill';
-  const items = skills.map(s => `${s.name} (${s.staminaCost} 기력)`);
+  const items = battleSkills.map(s => `${s.name} (${s.staminaCost} 기력)`);
   displayMenu(battleSubmenuEl, [...items, '뒤로'], (idx) => {
-    if (idx === skills.length) {
+    if (idx === battleSkills.length) {
       renderBattleMenu();
     } else {
-      useSkill(skills[idx]);
+      useSkill(battleSkills[idx]);
     }
   });
   battleSubmenuEl.style.display = 'block';
@@ -684,17 +707,29 @@ function openActionMenu() {
   actionMenusEl.innerHTML = '';
   actionMenuStack = [{ ul: actionListEl, items: [], onSelect: null }];
   actionMenusEl.appendChild(actionListEl);
-  setActionMenu(0, ['이동', '메뉴', '뒤로'], (idx) => {
-    if (idx === 0) {
-      console.log('이동 선택됨');
-    } else if (idx === 1) {
-      openActionMainMenu();
-    } else {
+  const availableActions = actions.filter(a => evaluateCondition(a.conditions));
+  setActionMenu(0, [...availableActions.map(a => a.name), '뒤로'], (idx) => {
+    if (idx === availableActions.length) {
       showMainMenu();
+    } else {
+      handleAction(availableActions[idx]);
     }
   });
   actionSectionEl.classList.add('active');
   npcSectionEl.classList.remove('active');
+}
+
+function handleAction(action) {
+  switch (action.key) {
+    case 'move':
+      console.log('이동 선택됨');
+      break;
+    case 'menu':
+      openActionMainMenu();
+      break;
+    default:
+      console.log(`Action not implemented: ${action.key}`);
+  }
 }
 
 function openActionMainMenu() {
@@ -711,11 +746,12 @@ function openActionMainMenu() {
 }
 
 function openActionSkillsMenu() {
-  setActionMenu(2, [...actions, '뒤로'], (idx) => {
-    if (idx === actions.length) {
+  const availableSkills = skills.filter(s => evaluateCondition(s.conditions));
+  setActionMenu(2, [...availableSkills.map(s => s.name), '뒤로'], (idx) => {
+    if (idx === availableSkills.length) {
       clearActionMenusFrom(2);
     } else {
-      console.log(`Action selected: ${actions[idx]}`);
+      console.log(`Skill selected: ${availableSkills[idx].name}`);
     }
   });
 }
@@ -872,6 +908,21 @@ function renderEquipment() {
   equipShoesEl.textContent = equipment.shoes ? items[equipment.shoes].name : '없음';
 }
 
+function updateEquipmentConditions() {
+  ['weapon', 'weapon_melee', 'weapon_blunt', 'weapon_firearm', 'weapon_energy']
+    .forEach(cond => player.conditions.delete(cond));
+  Object.values(equipment).forEach(id => {
+    if (!id) return;
+    const item = items[id];
+    if (item && item.type === 'weapon') {
+      player.conditions.add('weapon');
+      if (item.subtype) {
+        player.conditions.add(`weapon_${item.subtype}`);
+      }
+    }
+  });
+}
+
 function applyItemConditions(id, add) {
   const item = items[id];
   if (!item || !item.conditions) return;
@@ -889,6 +940,7 @@ function equipItem(slot, id) {
   if (prev) applyItemConditions(prev, false);
   equipment[slot] = id;
   applyItemConditions(id, true);
+  updateEquipmentConditions();
   renderEquipment();
 }
 
@@ -897,6 +949,7 @@ function unequipItem(slot) {
   if (prev) {
     applyItemConditions(prev, false);
     equipment[slot] = null;
+    updateEquipmentConditions();
     renderEquipment();
   }
 }
@@ -948,8 +1001,9 @@ function closeInventory() {
 }
 
 async function loadData() {
-  const [actionData, locationData, inventoryData, itemData, npcInfo] = await Promise.all([
+  const [actionData, skillData, locationData, inventoryData, itemData, npcInfo] = await Promise.all([
     fetch('data/actions.json').then(res => res.json()),
+    fetch('data/skills.json').then(res => res.json()),
     fetch('data/locations.json').then(res => res.json()),
     fetch('data/inventory.json').then(res => res.json()),
     fetch('data/items.json').then(res => res.json()),
@@ -957,6 +1011,7 @@ async function loadData() {
   ]);
 
   actions = actionData.actions;
+  skills = skillData.skills;
   locations = locationData.locations;
   currentLocation = locationData.start;
   items = itemData.items;
@@ -965,6 +1020,7 @@ async function loadData() {
   Object.values(equipment).forEach(id => {
     if (id) applyItemConditions(id, true);
   });
+  updateEquipmentConditions();
   categories = inventoryData.categories;
   npcData = npcInfo.npcs;
   currentCategory = categories[0] ? categories[0].key : '';
@@ -1051,10 +1107,10 @@ function handleCommand() {
       attemptRun();
     }
   } else if (currentMenu === 'battleSkill') {
-    if (num === skills.length + 1) {
+    if (num === battleSkills.length + 1) {
       renderBattleMenu();
-    } else if (num > 0 && num <= skills.length) {
-      useSkill(skills[num - 1]);
+    } else if (num > 0 && num <= battleSkills.length) {
+      useSkill(battleSkills[num - 1]);
     }
   } else if (currentMenu === 'battleItem') {
     if (num === battleItemList.length + 1) {

@@ -1,0 +1,16 @@
+{
+  "skills": [
+    {
+      "key": "spin_slash",
+      "name": "회전 베기",
+      "type": "physical",
+      "damageMultiplier": 2,
+      "hitCount": 1,
+      "accuracyMultiplier": 1,
+      "target": "all_enemies",
+      "conditions": {
+        "and": ["weapon", {"or": ["weapon_melee", "weapon_blunt"]}]
+      }
+    }
+  ]
+}
