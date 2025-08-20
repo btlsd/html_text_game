@@ -1,6 +1,6 @@
 {
   "actions": [
-    "이동",
-    "메뉴"
+    { "key": "move", "name": "이동", "conditions": [] },
+    { "key": "menu", "name": "메뉴", "conditions": [] }
   ]
 }
