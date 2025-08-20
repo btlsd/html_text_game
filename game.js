@@ -132,6 +132,19 @@ function evaluateCondition(cond) {
   return false;
 }
 
+function isAvailable(entity) {
+  return evaluateCondition(entity && entity.conditions);
+}
+
+function filterAvailable(list) {
+  return list.filter(isAvailable);
+}
+
+function toMenuOptions(list, getLabel) {
+  const labelFn = getLabel || (item => item);
+  return [...list.map(labelFn), '뒤로'];
+}
+
 function getXpForNextLevel() {
   return player.level * 100;
 }
@@ -455,12 +468,13 @@ function battleDefend() {
 
 function openBattleSkillMenu() {
   currentMenu = 'battleSkill';
-  const items = battleSkills.map(s => `${s.name} (${s.staminaCost} 기력)`);
-  displayMenu(battleSubmenuEl, [...items, '뒤로'], (idx) => {
-    if (idx === battleSkills.length) {
+  const availableSkills = filterAvailable(battleSkills);
+  const options = toMenuOptions(availableSkills, s => `${s.name} (${s.staminaCost} 기력)`);
+  displayMenu(battleSubmenuEl, options, (idx) => {
+    if (idx === availableSkills.length) {
       renderBattleMenu();
     } else {
-      useSkill(battleSkills[idx]);
+      useSkill(availableSkills[idx]);
     }
   });
   battleSubmenuEl.style.display = 'block';
@@ -507,8 +521,8 @@ async function useSkill(skill) {
 function openBattleItemMenu() {
   currentMenu = 'battleItem';
   battleItemList = inventory.filter(id => items[id].type === 'medicine');
-  const labels = battleItemList.map(id => items[id].name);
-  displayMenu(battleSubmenuEl, [...labels, '뒤로'], (idx) => {
+  const options = toMenuOptions(battleItemList, id => items[id].name);
+  displayMenu(battleSubmenuEl, options, (idx) => {
     if (idx === battleItemList.length) {
       renderBattleMenu();
     } else {
@@ -709,8 +723,8 @@ function openActionMenu() {
   actionMenusEl.innerHTML = '';
   actionMenuStack = [{ ul: actionListEl, items: [], onSelect: null }];
   actionMenusEl.appendChild(actionListEl);
-  const availableActions = actions.filter(a => evaluateCondition(a.conditions));
-  setActionMenu(0, [...availableActions.map(a => a.name), '뒤로'], (idx) => {
+  const availableActions = filterAvailable(actions);
+  setActionMenu(0, toMenuOptions(availableActions, a => a.name), (idx) => {
     if (idx === availableActions.length) {
       showMainMenu();
     } else {
@@ -748,8 +762,8 @@ function openActionMainMenu() {
 }
 
 function openActionSkillsMenu() {
-  const availableSkills = skills.filter(s => evaluateCondition(s.conditions));
-  setActionMenu(2, [...availableSkills.map(s => s.name), '뒤로'], (idx) => {
+  const availableSkills = filterAvailable(skills);
+  setActionMenu(2, toMenuOptions(availableSkills, s => s.name), (idx) => {
     if (idx === availableSkills.length) {
       clearActionMenusFrom(2);
     } else {
