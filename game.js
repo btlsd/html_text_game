@@ -38,6 +38,7 @@ const playerHpBarBattleEl = document.getElementById('player-hp-bar');
 const playerHpTextBattleEl = document.getElementById('player-hp-text');
 const playerStaminaBarBattleEl = document.getElementById('player-stamina-bar');
 const playerStaminaTextBattleEl = document.getElementById('player-stamina-text');
+const playerTurnBarEl = document.getElementById('player-turn-bar');
 const playerCommandEl = document.getElementById('player-command');
 const submitCommandEl = document.getElementById('submit-command');
 const statusUIEl = document.getElementById('status-ui');
@@ -113,12 +114,27 @@ function calculateHit(attacker, defender) {
   return Math.random() < chance;
 }
 
-function calculateDamage(attacker, defender, defending = false) {
-  let dmg = attacker.strength + 5;
+function calculateDamage(attacker, defender, weapon = null, defending = false) {
+  let dmg;
+  if (weapon && weapon.type === 'weapon') {
+    const props = weapon.properties || {};
+    if ((weapon.subtype === 'firearm' || weapon.subtype === 'energy') && props.fixedDamage != null) {
+      dmg = props.fixedDamage;
+    } else {
+      const strWeight = Math.min(Math.max(props.strWeight || 50, 1), 99);
+      const agiWeight = 100 - strWeight;
+      const damageStat = attacker.strength * (strWeight / 100) + attacker.agility * (agiWeight / 100);
+      const multiplier = props.multiplier || 1;
+      const bonus = props.bonus || 0;
+      dmg = damageStat * multiplier + bonus;
+    }
+  } else {
+    dmg = attacker.strength + 5;
+  }
   if (defending) {
     dmg = Math.max(0, dmg - defender.endurance);
   }
-  return dmg;
+  return Math.round(dmg);
 }
 
 player.hp = getMaxHp();
@@ -338,7 +354,13 @@ function renderBattle() {
   const maxStamina = getMaxStamina();
   playerStaminaBarBattleEl.style.width = `${(player.stamina / maxStamina) * 100}%`;
   playerStaminaTextBattleEl.textContent = `${player.stamina}/${maxStamina}`;
+  renderTurnBar();
   renderBattleMenu();
+}
+
+function renderTurnBar() {
+  if (!battleState) return;
+  playerTurnBarEl.style.width = `${battleState.playerGauge}%`;
 }
 
 function renderBattleMenu() {
@@ -371,7 +393,8 @@ async function battleAttack() {
   stat.count += 1;
   let message = `${enemy.name}을 공격했지만 빗나갔다!`;
   if (calculateHit(player.stats, enemy.stats)) {
-    const damage = calculateDamage(player.stats, enemy.stats);
+    const weapon = equipment.rightHand ? items[equipment.rightHand] : null;
+    const damage = calculateDamage(player.stats, enemy.stats, weapon);
     enemy.hp -= damage;
     battleState.stats.damageDealt += damage;
     stat.damage += damage;
@@ -395,6 +418,7 @@ function battleDefend() {
   battleState.playerReady = false;
   battleState.playerGauge = 0;
   battleState.defending = true;
+  renderTurnBar();
   renderBattleMenu();
 }
 
@@ -495,6 +519,7 @@ async function attemptRun() {
   } else {
     await typeBattleLog('도주에 실패했다!');
   }
+  renderTurnBar();
   renderBattleMenu();
   battleState.processing = false;
 }
@@ -504,7 +529,7 @@ async function enemyTurn() {
   const enemy = battleState.enemy;
   let message = `${enemy.name}의 공격을 회피했다!`;
   if (calculateHit(enemy.stats, player.stats)) {
-    const damage = calculateDamage(enemy.stats, player.stats, battleState.defending);
+    const damage = calculateDamage(enemy.stats, player.stats, null, battleState.defending);
     if (battleState.defending) battleState.defending = false;
     player.hp -= damage;
     if (player.hp < 0) player.hp = 0;
@@ -582,6 +607,7 @@ function updateBattleTurn() {
       if (battleState) battleState.processing = false;
     });
   }
+  renderTurnBar();
 }
 
 function endBattle(victory) {
