@@ -8,6 +8,7 @@
 - **game.js**: 데이터 파일을 불러와 UI에 표시하는 로직을 담고 있습니다.
 - **data/actions.json**: 플레이어가 수행할 수 있는 행동 목록을 정의합니다. 순서가 화면에 그대로 반영됩니다.
 - **data/locations.json**: 위치 이름, 묘사, NPC 목록 등을 저장합니다. `name`이 비어 있으면 UI에는 `???`로 표시됩니다.
+- **data/npcs.json**: 각 NPC의 능력치와 전투 관련 정보를 저장합니다.
 
 ## 동작 방식
 1. `game.js`는 `actions.json`과 `locations.json`을 불러옵니다.

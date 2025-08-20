@@ -1,0 +1,26 @@
+{
+  "npcs": {
+    "상인": {
+      "name": "상인",
+      "stats": { "strength": 1, "perception": 5, "endurance": 2, "charisma": 5, "intelligence": 4, "agility": 2 },
+      "xp": 0
+    },
+    "경비병": {
+      "name": "경비병",
+      "stats": { "strength": 5, "perception": 4, "endurance": 5, "charisma": 3, "intelligence": 3, "agility": 4 },
+      "xp": 40
+    },
+    "전투용 허수아비": {
+      "name": "전투용 허수아비",
+      "stats": { "strength": 3, "perception": 2, "endurance": 3, "charisma": 0, "intelligence": 0, "agility": 2 },
+      "xp": 20,
+      "hostile": true
+    },
+    "고블린": {
+      "name": "고블린",
+      "stats": { "strength": 4, "perception": 3, "endurance": 4, "charisma": 1, "intelligence": 1, "agility": 3 },
+      "xp": 30,
+      "hostile": true
+    }
+  }
+}

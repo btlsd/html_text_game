@@ -90,8 +90,12 @@ const player = {
   totalXp: 0
 };
 
+function getMaxHpFor(stats) {
+  return stats.endurance * 10 + stats.strength * 5;
+}
+
 function getMaxHp() {
-  return player.stats.endurance * 10 + player.stats.strength * 5;
+  return getMaxHpFor(player.stats);
 }
 
 function getMaxStamina() {
@@ -102,12 +106,25 @@ function getXpForNextLevel() {
   return player.level * 100;
 }
 
+function calculateHit(attacker, defender) {
+  const acc = attacker.perception;
+  const eva = defender.agility;
+  const chance = acc / (acc + eva);
+  return Math.random() < chance;
+}
+
+function calculateDamage(attacker, defender, defending = false) {
+  let dmg = attacker.strength + 5;
+  if (defending) {
+    dmg = Math.max(0, dmg - defender.endurance);
+  }
+  return dmg;
+}
+
 player.hp = getMaxHp();
 player.stamina = getMaxStamina();
 
-const enemies = {
-  '전투용 허수아비': { name: '전투용 허수아비', hp: 30, agility: 2, attack: 5, xp: 20 }
-};
+let npcData = {};
 
 const skills = [{ name: '강타', staminaCost: 10 }];
 let battleState = null;
@@ -273,17 +290,19 @@ function openNpcMenu() {
 }
 
 function getNpcActions(npc) {
-  if (npc === '전투용 허수아비') {
+  const info = npcData[npc];
+  if (info && info.hostile) {
     return ['전투'];
   }
   return ['대화', '관찰'];
 }
 
 function startBattle(npc) {
-  const enemyTemplate = enemies[npc];
+  const enemyTemplate = npcData[npc];
   if (!enemyTemplate) return;
+  const maxHp = getMaxHpFor(enemyTemplate.stats);
   battleState = {
-    enemy: { ...enemyTemplate, maxHp: enemyTemplate.hp },
+    enemy: { ...enemyTemplate, hp: maxHp, maxHp },
     defending: false,
     log: [],
     stats: { damageDealt: 0, damageTaken: 0, skillUsage: {} },
@@ -347,18 +366,24 @@ async function battleAttack() {
   battleState.processing = true;
   battleState.playerReady = false;
   battleState.playerGauge = 0;
-  const damage = player.stats.strength + 5;
-  battleState.enemy.hp -= damage;
-  battleState.stats.damageDealt += damage;
+  const enemy = battleState.enemy;
   const stat = battleState.stats.skillUsage['공격'] || { count: 0, damage: 0 };
   stat.count += 1;
-  stat.damage += damage;
+  let message = `${enemy.name}을 공격했지만 빗나갔다!`;
+  if (calculateHit(player.stats, enemy.stats)) {
+    const damage = calculateDamage(player.stats, enemy.stats);
+    enemy.hp -= damage;
+    battleState.stats.damageDealt += damage;
+    stat.damage += damage;
+    await flashScreen('white', damage);
+    renderBattle();
+    message = `${enemy.name}에게 ${damage}의 피해를 입혔다.`;
+  } else {
+    renderBattle();
+  }
   battleState.stats.skillUsage['공격'] = stat;
-  const message = `${battleState.enemy.name}에게 ${damage}의 피해를 입혔다.`;
-  await flashScreen('white', damage);
-  renderBattle();
   await typeBattleLog(message);
-  if (battleState.enemy.hp <= 0) {
+  if (enemy.hp <= 0) {
     endBattle(true);
     return;
   }
@@ -397,21 +422,27 @@ async function useSkill(skill) {
   battleState.playerReady = false;
   battleState.playerGauge = 0;
   player.stamina -= skill.staminaCost;
-  let damage = 0;
-  if (skill.name === '강타') {
-    damage = player.stats.strength * 2;
-  }
-  battleState.enemy.hp -= damage;
-  battleState.stats.damageDealt += damage;
+  const enemy = battleState.enemy;
   const stat = battleState.stats.skillUsage[skill.name] || { count: 0, damage: 0 };
   stat.count += 1;
-  stat.damage += damage;
+  let message = `${skill.name} 사용! 하지만 빗나갔다!`;
+  if (calculateHit(player.stats, enemy.stats)) {
+    let damage = 0;
+    if (skill.name === '강타') {
+      damage = player.stats.strength * 2;
+    }
+    enemy.hp -= damage;
+    battleState.stats.damageDealt += damage;
+    stat.damage += damage;
+    await flashScreen('white', damage, skill.hits || 1);
+    renderBattle();
+    message = `${skill.name} 사용! ${damage}의 피해를 입혔다.`;
+  } else {
+    renderBattle();
+  }
   battleState.stats.skillUsage[skill.name] = stat;
-  const message = `${skill.name} 사용! ${damage}의 피해를 입혔다.`;
-  await flashScreen('white', damage, skill.hits || 1);
-  renderBattle();
   await typeBattleLog(message);
-  if (battleState.enemy.hp <= 0) {
+  if (enemy.hp <= 0) {
     endBattle(true);
     return;
   }
@@ -458,7 +489,7 @@ async function attemptRun() {
   battleState.playerReady = false;
   battleState.playerGauge = 0;
   const enemy = battleState.enemy;
-  const chance = player.stats.agility / (player.stats.agility + enemy.agility);
+  const chance = player.stats.agility / (player.stats.agility + enemy.stats.agility);
   if (Math.random() < chance) {
     endBattle(null);
   } else {
@@ -471,18 +502,21 @@ async function attemptRun() {
 async function enemyTurn() {
   if (!battleState) return;
   const enemy = battleState.enemy;
-  let damage = enemy.attack;
-  if (battleState.defending) {
-    damage = Math.max(0, damage - player.stats.endurance);
-    battleState.defending = false;
+  let message = `${enemy.name}의 공격을 회피했다!`;
+  if (calculateHit(enemy.stats, player.stats)) {
+    const damage = calculateDamage(enemy.stats, player.stats, battleState.defending);
+    if (battleState.defending) battleState.defending = false;
+    player.hp -= damage;
+    if (player.hp < 0) player.hp = 0;
+    battleState.stats.damageTaken += damage;
+    message = `${enemy.name}가 당신에게 ${damage}의 피해를 입혔다.`;
+    await flashScreen('red', damage);
+    render();
+    renderBattle();
+  } else {
+    if (battleState.defending) battleState.defending = false;
+    renderBattle();
   }
-  player.hp -= damage;
-  if (player.hp < 0) player.hp = 0;
-  battleState.stats.damageTaken += damage;
-  const message = `${enemy.name}가 당신에게 ${damage}의 피해를 입혔다.`;
-  await flashScreen('red', damage);
-  render();
-  renderBattle();
   await typeBattleLog(message);
   if (player.hp <= 0) {
     endBattle(false);
@@ -540,7 +574,7 @@ function updateBattleTurn() {
       renderBattleMenu();
     }
   }
-  battleState.enemyGauge += battleState.enemy.agility;
+  battleState.enemyGauge += battleState.enemy.stats.agility;
   if (battleState.enemyGauge >= 100) {
     battleState.enemyGauge -= 100;
     battleState.processing = true;
@@ -832,11 +866,12 @@ function closeInventory() {
 }
 
 async function loadData() {
-  const [actionData, locationData, inventoryData, itemData] = await Promise.all([
+  const [actionData, locationData, inventoryData, itemData, npcInfo] = await Promise.all([
     fetch('data/actions.json').then(res => res.json()),
     fetch('data/locations.json').then(res => res.json()),
     fetch('data/inventory.json').then(res => res.json()),
-    fetch('data/items.json').then(res => res.json())
+    fetch('data/items.json').then(res => res.json()),
+    fetch('data/npcs.json').then(res => res.json())
   ]);
 
   actions = actionData.actions;
@@ -846,6 +881,7 @@ async function loadData() {
   inventory = inventoryData.inventory;
   equipment = inventoryData.equipment;
   categories = inventoryData.categories;
+  npcData = npcInfo.npcs;
   currentCategory = categories[0] ? categories[0].key : '';
   render();
   showMainMenu();
