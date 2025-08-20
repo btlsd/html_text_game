@@ -35,7 +35,9 @@
     },
     "guild_badge": {
       "name": "길드 증표",
-      "type": "important",
+      "type": "armor",
+      "subtype": "back",
+      "conditions": ["guild_access"],
       "properties": {}
     }
   }

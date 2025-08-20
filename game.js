@@ -47,6 +47,7 @@ const extraStatsEl = document.getElementById('extra-stats');
 const statusDescEl = document.getElementById('status-description');
 const statusConfirmEl = document.getElementById('status-confirm');
 const closeStatusEl = document.getElementById('close-status');
+const conditionListEl = document.getElementById('condition-list');
 const flashOverlayEl = document.getElementById('flash-overlay');
 const battleResultEl = document.getElementById('battle-result');
 const battleResultStatsEl = document.getElementById('battle-result-stats');
@@ -73,6 +74,10 @@ const statDisplayNames = {
   agility: '민첩'
 };
 
+const conditionDisplayNames = {
+  guild_access: '길드 출입 자격'
+};
+
 const player = {
   stats: {
     strength: 5,
@@ -88,7 +93,8 @@ const player = {
   tempStats: {},
   level: 1,
   xp: 0,
-  totalXp: 0
+  totalXp: 0,
+  conditions: new Set()
 };
 
 function getMaxHpFor(stats) {
@@ -754,6 +760,19 @@ function renderStatusMenu() {
     statListEl.appendChild(li);
   });
   extraStatsEl.textContent = player.extraStats > 0 ? `추가 스탯: ${player.extraStats}` : '';
+  conditionListEl.innerHTML = '';
+  if (player.conditions.size === 0) {
+    const li = document.createElement('li');
+    li.textContent = '기록된 조건이 없습니다.';
+    conditionListEl.appendChild(li);
+  } else {
+    player.conditions.forEach(cond => {
+      const li = document.createElement('li');
+      const name = conditionDisplayNames[cond] || cond;
+      li.textContent = name;
+      conditionListEl.appendChild(li);
+    });
+  }
   statusDescEl.textContent = '아직 특별한 이상은 보이지 않는다.';
 }
 
@@ -853,23 +872,60 @@ function renderEquipment() {
   equipShoesEl.textContent = equipment.shoes ? items[equipment.shoes].name : '없음';
 }
 
+function applyItemConditions(id, add) {
+  const item = items[id];
+  if (!item || !item.conditions) return;
+  item.conditions.forEach(cond => {
+    if (add) {
+      player.conditions.add(cond);
+    } else {
+      player.conditions.delete(cond);
+    }
+  });
+}
+
+function equipItem(slot, id) {
+  const prev = equipment[slot];
+  if (prev) applyItemConditions(prev, false);
+  equipment[slot] = id;
+  applyItemConditions(id, true);
+  renderEquipment();
+}
+
+function unequipItem(slot) {
+  const prev = equipment[slot];
+  if (prev) {
+    applyItemConditions(prev, false);
+    equipment[slot] = null;
+    renderEquipment();
+  }
+}
+
+function setupUnequipListener(el, slot) {
+  el.addEventListener('click', () => {
+    if (equipment[slot]) {
+      const choice = prompt('1. 장비 해제\n2. 뒤로');
+      if (choice === '1') {
+        unequipItem(slot);
+      }
+    }
+  });
+}
+
 function handleItemClick(id) {
   const item = items[id];
   if (item.type === 'weapon') {
     const choice = prompt('1. 오른손에 장착\n2. 왼손에 장착\n3. 뒤로');
     if (choice === '1') {
-      equipment.rightHand = id;
-      renderEquipment();
+      equipItem('rightHand', id);
     } else if (choice === '2') {
-      equipment.leftHand = id;
-      renderEquipment();
+      equipItem('leftHand', id);
     }
   } else if (item.type === 'armor') {
     const slotName = slotDisplayNames[item.subtype] || item.subtype;
     const choice = prompt(`1. ${slotName}에 장착\n2. 뒤로`);
     if (choice === '1') {
-      equipment[item.subtype] = id;
-      renderEquipment();
+      equipItem(item.subtype, id);
     }
   }
 }
@@ -906,6 +962,9 @@ async function loadData() {
   items = itemData.items;
   inventory = inventoryData.inventory;
   equipment = inventoryData.equipment;
+  Object.values(equipment).forEach(id => {
+    if (id) applyItemConditions(id, true);
+  });
   categories = inventoryData.categories;
   npcData = npcInfo.npcs;
   currentCategory = categories[0] ? categories[0].key : '';
@@ -1017,6 +1076,14 @@ playerCommandEl.addEventListener('keypress', (e) => {
 
 inventoryHeaderEl.addEventListener('click', openInventory);
 closeInventoryEl.addEventListener('click', closeInventory);
+setupUnequipListener(equipRightHandEl, 'rightHand');
+setupUnequipListener(equipLeftHandEl, 'leftHand');
+setupUnequipListener(equipHeadEl, 'head');
+setupUnequipListener(equipTopEl, 'top');
+setupUnequipListener(equipBottomEl, 'bottom');
+setupUnequipListener(equipBackEl, 'back');
+setupUnequipListener(equipGlovesEl, 'gloves');
+setupUnequipListener(equipShoesEl, 'shoes');
 statusConfirmEl.addEventListener('click', confirmStatAllocation);
 closeStatusEl.addEventListener('click', closeStatusMenu);
 battleResultCloseEl.addEventListener('click', () => {
