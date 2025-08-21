@@ -4,9 +4,22 @@ body {
   color: #00ff00;
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
   height: 100vh;
   margin: 0;
+}
+
+#ui-container {
+  display: flex;
+  gap: 20px;
+}
+
+#log {
+  width: 300px;
+  height: 600px;
+  border: 2px solid #00ff00;
+  padding: 10px;
+  overflow-y: auto;
 }
 
 #game {

@@ -60,6 +60,7 @@ const battleOutcomeEl = document.getElementById('battle-outcome');
 const battleResultCloseEl = document.getElementById('battle-result-close');
 const xpBarEl = document.getElementById('xp-bar');
 const xpTextEl = document.getElementById('xp-text');
+const logEl = document.getElementById('log');
 
 const slotDisplayNames = {
   head: '머리',
@@ -221,9 +222,37 @@ function getTimeSegment() {
   return { key: 'lateNight', name: '심야' };
 }
 
+function addLog(message) {
+  const entry = document.createElement('div');
+  entry.textContent = message;
+  logEl.appendChild(entry);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function logLocation() {
+  const loc = locations[currentLocation];
+  const seg = getTimeSegment();
+  addLog(`${seg.name} ${String(currentTime).padStart(2, '0')}:00`);
+  if (loc && loc.name) addLog(`장소: ${loc.name}`);
+  const desc = loc && loc.descriptions && loc.descriptions[seg.key]
+    ? loc.descriptions[seg.key]
+    : loc
+    ? loc.description
+    : '';
+  if (desc) addLog(desc);
+}
+
+function logNpcDescription(npc) {
+  const info = npcData[npc];
+  if (info && info.description) {
+    addLog(info.description);
+  }
+}
+
 function advanceTime(hours = 1) {
   currentTime = (currentTime + hours) % 24;
   render();
+  logLocation();
 }
 
 function updateHeaders() {
@@ -806,6 +835,7 @@ function openNpcInteractions(npc, npcIndex) {
   currentNpc = npc;
   updateHeaders();
   highlightItem(npcListEl, npcIndex);
+  logNpcDescription(npc);
   const npcActions = getNpcActions(npc);
   const items = [...npcActions, '뒤로'];
   displayMenu(npcInteractionListEl, items, (idx) => {
@@ -1203,6 +1233,7 @@ async function loadData() {
   currentCategory = categories[0] ? categories[0].key : '';
   render();
   showMainMenu();
+  logLocation();
 }
 
 loadData();
