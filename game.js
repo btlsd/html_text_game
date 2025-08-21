@@ -287,11 +287,8 @@ function highlightItem(listEl, index) {
 
 function displayMenu(listEl, items, onSelect) {
   listEl.innerHTML = '';
-  listEl.classList.add('menu-tree');
-  listEl.classList.remove('animating');
-  items.forEach((text, idx) => {
+  const elements = items.map((text, idx) => {
     const li = document.createElement('li');
-    li.dataset.fullText = `${idx + 1}. ${text}`;
     li.textContent = '';
     if (onSelect) {
       li.addEventListener('click', () => {
@@ -300,35 +297,21 @@ function displayMenu(listEl, items, onSelect) {
       });
     }
     listEl.appendChild(li);
+    return { li, fullText: `${idx + 1}. ${text}` };
   });
-  animateMenuList(listEl);
-}
 
-function animateMenuList(listEl) {
-  listEl.classList.add('animating');
-  const items = listEl.querySelectorAll(':scope > li');
-  let index = 0;
-  function showNext() {
-    if (index >= items.length) {
-      listEl.classList.remove('animating');
-      return;
-    }
-    const li = items[index];
-    const text = li.dataset.fullText || '';
-    li.style.display = '';
-    li.classList.add('show-line');
-    let char = 0;
-    const interval = setInterval(() => {
-      if (char < text.length) {
-        li.textContent += text.charAt(char++);
-      } else {
-        clearInterval(interval);
-        index++;
-        showNext();
+  let step = 0;
+  const interval = setInterval(() => {
+    let done = true;
+    elements.forEach(el => {
+      if (step < el.fullText.length) {
+        el.li.textContent = el.fullText.slice(0, step + 1);
+        if (step < el.fullText.length - 1) done = false;
       }
-    }, 50);
-  }
-  setTimeout(showNext, 300);
+    });
+    step++;
+    if (done) clearInterval(interval);
+  }, 50);
 }
 
 function setActionMenu(level, items, onSelect) {
@@ -1370,5 +1353,69 @@ battleResultCloseEl.addEventListener('click', () => {
   battleResultEl.style.display = 'none';
   showMainMenu();
   render();
+});
+
+// Tree menu interaction
+function animateTreeChildren(ul) {
+  setTimeout(() => {
+    const items = ul.querySelectorAll(':scope > li');
+    let index = 0;
+    function showNext() {
+      if (index >= items.length) return;
+      const li = items[index];
+      const text = li.textContent;
+      li.textContent = '';
+      li.style.display = '';
+      li.classList.add('show-line');
+      setTimeout(() => {
+        let char = 0;
+        const interval = setInterval(() => {
+          if (char < text.length) {
+            li.textContent += text.charAt(char++);
+          } else {
+            clearInterval(interval);
+            index++;
+            showNext();
+          }
+        }, 50);
+      }, 300);
+    }
+    showNext();
+  }, 300);
+}
+
+const treeItems = document.querySelectorAll('#tree-menu li');
+treeItems.forEach(item => {
+  item.addEventListener('click', function (e) {
+    e.stopPropagation();
+    const all = document.querySelectorAll('#tree-menu li');
+    all.forEach(el => {
+      el.classList.remove('expanded', 'selected');
+      el.style.display = 'none';
+      const child = el.querySelector(':scope > ul');
+      if (child) {
+        child.style.display = 'none';
+        child.classList.remove('animating');
+      }
+    });
+    let node = this;
+    while (node && node.matches('#tree-menu li')) {
+      node.style.display = '';
+      node.classList.add('expanded');
+      const child = node.querySelector(':scope > ul');
+      if (child) child.style.display = 'block';
+      node = node.parentElement.closest('li');
+    }
+    const childList = this.querySelector(':scope > ul');
+    if (childList) {
+      childList.querySelectorAll(':scope > li').forEach(li => {
+        li.style.display = 'none';
+        li.classList.remove('show-line');
+      });
+      childList.classList.add('animating');
+      animateTreeChildren(childList);
+    }
+    this.classList.add('selected');
+  });
 });
 
