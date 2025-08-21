@@ -3,6 +3,7 @@
     {
       "key": "spin_slash",
       "name": "회전 베기",
+      "staminaCost": 10,
       "type": "physical",
       "damageMultiplier": 2,
       "hitCount": 1,

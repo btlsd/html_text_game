@@ -154,10 +154,13 @@ function getXpForNextLevel() {
   return player.level * 100;
 }
 
-function calculateHit(attacker, defender) {
+function calculateHit(attacker, defender, accuracyMultiplier = 1) {
   const acc = attacker.perception;
   const eva = defender.agility;
-  const chance = acc / (acc + eva);
+  let chance = acc / (acc + eva);
+  chance *= accuracyMultiplier;
+  if (chance < 0) chance = 0;
+  if (chance > 1) chance = 1;
   return Math.random() < chance;
 }
 
@@ -189,9 +192,9 @@ player.stamina = getMaxStamina();
 
 let npcData = {};
 
-const battleSkills = [{ name: '강타', staminaCost: 10 }];
 let battleState = null;
 let battleItemList = [];
+let battleSkillList = [];
 
 let actions = [];
 let skills = [];
@@ -549,13 +552,13 @@ function battleDefend() {
 
 function openBattleSkillMenu() {
   currentMenu = 'battleSkill';
-  const availableSkills = filterAvailable(battleSkills);
-  const options = toMenuOptions(availableSkills, s => `${s.name} (${s.staminaCost} 기력)`);
+  battleSkillList = filterAvailable(skills);
+  const options = toMenuOptions(battleSkillList, s => `${s.name} (${s.staminaCost} 기력)`);
   displayMenu(battleSubmenuEl, options, (idx) => {
-    if (idx === availableSkills.length) {
+    if (idx === battleSkillList.length) {
       renderBattleMenu();
     } else {
-      useSkill(availableSkills[idx]);
+      useSkill(battleSkillList[idx]);
     }
   });
   battleSubmenuEl.style.display = 'block';
@@ -563,7 +566,8 @@ function openBattleSkillMenu() {
 
 async function useSkill(skill) {
   if (!battleState || !battleState.playerReady) return;
-  if (player.stamina < skill.staminaCost) {
+  const cost = skill.staminaCost || 0;
+  if (player.stamina < cost) {
     await typeBattleLog('기력이 부족합니다.');
     renderBattleMenu();
     return;
@@ -571,24 +575,35 @@ async function useSkill(skill) {
   battleState.processing = true;
   battleState.playerReady = false;
   battleState.playerGauge = 0;
-  player.stamina -= skill.staminaCost;
+  player.stamina -= cost;
   const enemy = battleState.enemy;
   const stat = battleState.stats.skillUsage[skill.name] || { count: 0, damage: 0 };
   stat.count += 1;
-  let message = `${skill.name} 사용! 하지만 빗나갔다!`;
-  if (calculateHit(player.stats, enemy.stats)) {
-    let damage = 0;
-    if (skill.name === '강타') {
-      damage = player.stats.strength * 2;
+  let totalDamage = 0;
+  let hits = 0;
+  const hitCount = skill.hitCount || 1;
+  for (let i = 0; i < hitCount; i++) {
+    if (calculateHit(player.stats, enemy.stats, skill.accuracyMultiplier || 1)) {
+      let damage = 0;
+      if (skill.type === 'physical') {
+        const weapon = equipment.rightHand ? items[equipment.rightHand] : null;
+        const base = calculateDamage(player.stats, enemy.stats, weapon);
+        damage = Math.round(base * (skill.damageMultiplier || 1));
+      } else {
+        damage = skill.damage || 0;
+      }
+      enemy.hp -= damage;
+      battleState.stats.damageDealt += damage;
+      stat.damage += damage;
+      totalDamage += damage;
+      hits++;
     }
-    enemy.hp -= damage;
-    battleState.stats.damageDealt += damage;
-    stat.damage += damage;
-    await flashScreen('white', damage, skill.hits || 1);
-    renderBattle();
-    message = `${skill.name} 사용! ${damage}의 피해를 입혔다.`;
-  } else {
-    renderBattle();
+  }
+  await flashScreen('white', totalDamage, hits || 1);
+  renderBattle();
+  let message = `${skill.name} 사용! 하지만 빗나갔다!`;
+  if (hits > 0) {
+    message = `${skill.name} 사용! ${totalDamage}의 피해를 입혔다.`;
   }
   battleState.stats.skillUsage[skill.name] = stat;
   await typeBattleLog(message);
@@ -1301,10 +1316,10 @@ function handleCommand() {
       attemptRun();
     }
   } else if (currentMenu === 'battleSkill') {
-    if (num === battleSkills.length + 1) {
+    if (num === battleSkillList.length + 1) {
       renderBattleMenu();
-    } else if (num > 0 && num <= battleSkills.length) {
-      useSkill(battleSkills[num - 1]);
+    } else if (num > 0 && num <= battleSkillList.length) {
+      useSkill(battleSkillList[num - 1]);
     }
   } else if (currentMenu === 'battleItem') {
     if (num === battleItemList.length + 1) {
