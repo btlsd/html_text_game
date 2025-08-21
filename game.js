@@ -1340,3 +1340,33 @@ battleResultCloseEl.addEventListener('click', () => {
   render();
 });
 
+// Tree menu interaction
+const treeItems = document.querySelectorAll('#tree-menu li');
+treeItems.forEach(item => {
+  item.addEventListener('click', function (e) {
+    e.stopPropagation();
+    const all = document.querySelectorAll('#tree-menu li');
+    all.forEach(el => {
+      el.classList.remove('expanded', 'selected');
+      el.style.display = 'none';
+      const child = el.querySelector(':scope > ul');
+      if (child) child.style.display = 'none';
+    });
+    let node = this;
+    while (node && node.matches('#tree-menu li')) {
+      node.style.display = '';
+      node.classList.add('expanded');
+      const child = node.querySelector(':scope > ul');
+      if (child) child.style.display = 'block';
+      node = node.parentElement.closest('li');
+    }
+    const childList = this.querySelector(':scope > ul');
+    if (childList) {
+      childList.querySelectorAll(':scope > li').forEach(li => {
+        li.style.display = '';
+      });
+    }
+    this.classList.add('selected');
+  });
+});
+
