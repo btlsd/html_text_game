@@ -325,21 +325,53 @@ body {
   display: none;
   margin-left: 10px;
   padding-left: 20px;
-  border-left: 1px solid #00ff00;
+  position: relative;
+  overflow: hidden;
 }
 
 .tree li.expanded > ul {
   display: block;
 }
 
-.tree li.expanded > ul > li::before {
+.tree li > ul::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 0;
+  background-color: #00ff00;
+}
+
+.tree li.expanded > ul::before {
+  height: 100%;
+}
+
+.tree li > ul.animating::before {
+  animation: drawVertical 0.3s forwards;
+}
+
+.tree li > ul > li {
+  position: relative;
+}
+
+.tree li > ul > li::before {
   content: '';
   position: absolute;
   top: 10px;
   left: -20px;
-  width: 20px;
-  height: 0;
+  width: 0;
   border-top: 1px solid #00ff00;
+  transition: width 0.3s;
+}
+
+.tree li > ul > li.show-line::before {
+  width: 20px;
+}
+
+@keyframes drawVertical {
+  from { height: 0; }
+  to { height: 100%; }
 }
 
 .tree li.selected {
