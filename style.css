@@ -111,8 +111,16 @@ body {
   display: flex;
 }
 
-#inventory-left {
+#inventory-left,
+#equipment-middle,
+#inventory-right {
   flex: 1;
+  padding: 0 10px;
+}
+
+#inventory-left,
+#equipment-middle {
+  border-right: 1px dotted #00ff00;
 }
 
 #inventory-tabs {
@@ -148,12 +156,12 @@ body {
   padding-left: 0;
 }
 
-#equipment-right {
-  flex: 1;
-  padding-left: 20px;
+#equipment-middle ul {
+  list-style: none;
+  padding-left: 0;
 }
 
-#equipment-right ul {
+#inventory-right ul {
   list-style: none;
   padding-left: 0;
 }

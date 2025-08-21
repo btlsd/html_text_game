@@ -14,6 +14,8 @@ const inventoryUIEl = document.getElementById('inventory-ui');
 const inventoryTabsEl = document.getElementById('inventory-tabs');
 const inventorySubtabsEl = document.getElementById('inventory-subtabs');
 const inventoryItemsEl = document.getElementById('inventory-items');
+const inventoryStatListEl = document.getElementById('inventory-stat-list');
+const inventoryConditionListEl = document.getElementById('inventory-condition-list');
 const equipRightHandEl = document.getElementById('equip-rightHand');
 const equipLeftHandEl = document.getElementById('equip-leftHand');
 const equipHeadEl = document.getElementById('equip-head');
@@ -856,8 +858,57 @@ function confirmStatAllocation() {
   renderStatusMenu();
 }
 
+
+function getWeaponAttack(id) {
+  return calculateDamage(player.stats, { endurance: 0, agility: 0 }, id ? items[id] : null);
+}
+
+function getTotalDefense(eq = equipment) {
+  let total = 0;
+  ['head', 'top', 'bottom', 'back', 'gloves', 'shoes'].forEach(slot => {
+    const itemId = eq[slot];
+    if (itemId) {
+      const def = items[itemId]?.properties?.defense || 0;
+      total += def;
+    }
+  });
+  return total;
+}
+
+function renderInventoryStats() {
+  inventoryStatListEl.innerHTML = '';
+  const atkLi = document.createElement('li');
+  const atk = Math.max(getWeaponAttack(equipment.rightHand), getWeaponAttack(equipment.leftHand));
+  atkLi.textContent = `공격력: ${atk}`;
+  inventoryStatListEl.appendChild(atkLi);
+  const defLi = document.createElement('li');
+  defLi.textContent = `방어력: ${getTotalDefense()}`;
+  inventoryStatListEl.appendChild(defLi);
+  Object.keys(player.stats).forEach(key => {
+    const li = document.createElement('li');
+    const name = statDisplayNames[key] || key;
+    li.textContent = `${name}: ${player.stats[key]}`;
+    inventoryStatListEl.appendChild(li);
+  });
+
+  inventoryConditionListEl.innerHTML = '';
+  if (player.conditions.size === 0) {
+    const li = document.createElement('li');
+    li.textContent = '기록된 조건이 없습니다.';
+    inventoryConditionListEl.appendChild(li);
+  } else {
+    player.conditions.forEach(cond => {
+      const li = document.createElement('li');
+      const name = conditionDisplayNames[cond] || cond;
+      li.textContent = name;
+      inventoryConditionListEl.appendChild(li);
+    });
+  }
+}
+
 function renderInventory() {
   renderEquipment();
+  renderInventoryStats();
   renderInventoryTabs();
   renderInventorySubtabs();
   renderInventoryItems();
@@ -952,12 +1003,19 @@ function applyItemConditions(id, add) {
 }
 
 function equipItem(slot, id) {
+  const index = inventory.indexOf(id);
+  if (index !== -1) inventory.splice(index, 1);
   const prev = equipment[slot];
-  if (prev) applyItemConditions(prev, false);
+  if (prev) {
+    inventory.push(prev);
+    applyItemConditions(prev, false);
+  }
   equipment[slot] = id;
   applyItemConditions(id, true);
   updateEquipmentConditions();
   renderEquipment();
+  renderInventoryItems();
+  renderInventoryStats();
 }
 
 function unequipItem(slot) {
@@ -965,8 +1023,11 @@ function unequipItem(slot) {
   if (prev) {
     applyItemConditions(prev, false);
     equipment[slot] = null;
+    inventory.push(prev);
     updateEquipmentConditions();
     renderEquipment();
+    renderInventoryItems();
+    renderInventoryStats();
   }
 }
 
@@ -984,7 +1045,11 @@ function setupUnequipListener(el, slot) {
 function handleItemClick(id) {
   const item = items[id];
   if (item.type === 'weapon') {
-    const choice = prompt('1. 오른손에 장착\n2. 왼손에 장착\n3. 뒤로');
+    const rightBefore = getWeaponAttack(equipment.rightHand);
+    const rightAfter = getWeaponAttack(id);
+    const leftBefore = getWeaponAttack(equipment.leftHand);
+    const leftAfter = getWeaponAttack(id);
+    const choice = prompt(`1. 오른손에 장착 (공격력 ${rightBefore} -> ${rightAfter})\n2. 왼손에 장착 (공격력 ${leftBefore} -> ${leftAfter})\n3. 뒤로`);
     if (choice === '1') {
       equipItem('rightHand', id);
     } else if (choice === '2') {
@@ -992,7 +1057,10 @@ function handleItemClick(id) {
     }
   } else if (item.type === 'armor') {
     const slotName = slotDisplayNames[item.subtype] || item.subtype;
-    const choice = prompt(`1. ${slotName}에 장착\n2. 뒤로`);
+    const before = getTotalDefense();
+    const tempEquip = Object.assign({}, equipment, { [item.subtype]: id });
+    const after = getTotalDefense(tempEquip);
+    const choice = prompt(`1. ${slotName}에 장착 (방어력 ${before} -> ${after})\n2. 뒤로`);
     if (choice === '1') {
       equipItem(item.subtype, id);
     }
