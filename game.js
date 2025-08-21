@@ -317,7 +317,7 @@ function showMainMenu() {
   npcInteractionListEl.innerHTML = '';
   npcInteractionListEl.style.display = 'none';
   npcListEl.querySelectorAll('li').forEach(li => li.classList.remove('selected'));
-  npcSectionEl.classList.remove('active');
+  npcSectionEl.classList.add('active');
   actionSectionEl.classList.remove('active');
   inventoryMenuEl.style.display = '';
   inventoryUIEl.style.display = 'none';
@@ -721,7 +721,14 @@ function openNpcInteractions(npc, npcIndex) {
 
 function openActionMenu() {
   currentMenu = 'actions';
+  currentNpc = '';
   updateHeaders();
+  // Ensure NPC list remains visible but non-interactive
+  renderNpcList();
+  npcInteractionListEl.innerHTML = '';
+  npcInteractionListEl.style.display = 'none';
+  npcListEl.querySelectorAll('li').forEach(li => li.classList.remove('selected'));
+
   actionMenusEl.innerHTML = '';
   actionMenuStack = [{ ul: actionListEl, items: [], onSelect: null }];
   actionMenusEl.appendChild(actionListEl);
@@ -734,7 +741,7 @@ function openActionMenu() {
     }
   });
   actionSectionEl.classList.add('active');
-  npcSectionEl.classList.remove('active');
+  npcSectionEl.classList.add('active');
 }
 
 function handleAction(action) {
