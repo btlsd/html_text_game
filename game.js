@@ -1,5 +1,6 @@
 const locationNameEl = document.getElementById('location-name');
 const locationDescEl = document.getElementById('location-description');
+const timeDisplayEl = document.getElementById('time-display');
 const npcListEl = document.getElementById('npc-list');
 const npcInteractionListEl = document.getElementById('npc-interaction-list');
 const actionMenusEl = document.getElementById('action-menus');
@@ -204,6 +205,21 @@ let currentNpc = '';
 let currentCategory = '';
 let currentSubcategory = null;
 let actionMenuStack = [];
+let currentTime = 8;
+
+function getTimeSegment() {
+  if (currentTime >= 4 && currentTime <= 7) return { key: 'morning', name: '아침' };
+  if (currentTime >= 8 && currentTime <= 11) return { key: 'day', name: '낮' };
+  if (currentTime >= 12 && currentTime <= 15) return { key: 'afternoon', name: '오후' };
+  if (currentTime >= 16 && currentTime <= 19) return { key: 'evening', name: '저녁' };
+  if (currentTime >= 20 && currentTime <= 23) return { key: 'night', name: '밤' };
+  return { key: 'lateNight', name: '심야' };
+}
+
+function advanceTime(hours = 1) {
+  currentTime = (currentTime + hours) % 24;
+  render();
+}
 
 function updateHeaders() {
   if (currentMenu === 'main') {
@@ -219,8 +235,17 @@ function updateHeaders() {
 
 function render() {
   const loc = locations[currentLocation];
+  const seg = getTimeSegment();
   locationNameEl.textContent = loc && loc.name ? loc.name : '???';
-  locationDescEl.textContent = loc ? loc.description : '';
+  if (timeDisplayEl) {
+    timeDisplayEl.textContent = `${seg.name} ${String(currentTime).padStart(2, '0')}:00`;
+  }
+  const desc = loc && loc.descriptions && loc.descriptions[seg.key]
+    ? loc.descriptions[seg.key]
+    : loc
+    ? loc.description
+    : '';
+  locationDescEl.textContent = desc;
   const maxHp = getMaxHp();
   const maxStamina = getMaxStamina();
   hpBarEl.style.width = `${(player.hp / maxHp) * 100}%`;
@@ -712,6 +737,7 @@ function openNpcInteractions(npc, npcIndex) {
       } else {
         console.log(`Interaction with ${npc}: ${action}`);
       }
+      advanceTime();
     }
   });
   npcInteractionListEl.style.display = 'block';
@@ -748,12 +774,14 @@ function handleAction(action) {
   switch (action.key) {
     case 'move':
       console.log('이동 선택됨');
+      advanceTime();
       break;
     case 'menu':
       openActionMainMenu();
       break;
     default:
       console.log(`Action not implemented: ${action.key}`);
+      advanceTime();
   }
 }
 
@@ -761,6 +789,7 @@ function openActionMainMenu() {
   setActionMenu(1, ['상태', '기술', '뒤로'], (idx) => {
     if (idx === 0) {
       openStatusMenu();
+      advanceTime();
     } else if (idx === 1) {
       openActionSkillsMenu();
     } else {
@@ -777,6 +806,7 @@ function openActionSkillsMenu() {
       clearActionMenusFrom(2);
     } else {
       console.log(`Skill selected: ${availableSkills[idx].name}`);
+      advanceTime();
     }
   });
 }
