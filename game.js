@@ -8,9 +8,11 @@ const actionListEl = document.getElementById('action-list');
 const npcSectionEl = document.getElementById('npcs');
 const actionSectionEl = document.getElementById('actions');
 const npcHeaderEl = document.getElementById('npc-header');
+const moveHeaderEl = document.getElementById('move-header');
 const actionHeaderEl = document.getElementById('action-header');
-const inventoryHeaderEl = document.getElementById('inventory-header');
-const inventoryMenuEl = document.getElementById('inventory-menu');
+const menuHeaderEl = document.getElementById('menu-header');
+const menuSectionEl = document.getElementById('game-menu');
+const gameMenuListEl = document.getElementById('game-menu-list');
 const inventoryUIEl = document.getElementById('inventory-ui');
 const inventoryTabsEl = document.getElementById('inventory-tabs');
 const inventorySubtabsEl = document.getElementById('inventory-subtabs');
@@ -224,12 +226,14 @@ function advanceTime(hours = 1) {
 function updateHeaders() {
   if (currentMenu === 'main') {
     npcHeaderEl.textContent = '1. 인물';
-    actionHeaderEl.textContent = '2. 행동';
-    inventoryHeaderEl.textContent = '3. 소지품';
+    moveHeaderEl.textContent = '2. 이동';
+    actionHeaderEl.textContent = '3. 행동';
+    menuHeaderEl.textContent = '4. 메뉴';
   } else {
     npcHeaderEl.textContent = '인물';
+    moveHeaderEl.textContent = '이동';
     actionHeaderEl.textContent = '행동';
-    inventoryHeaderEl.textContent = '소지품';
+    menuHeaderEl.textContent = '메뉴';
   }
 }
 
@@ -332,6 +336,52 @@ function clearActionMenusFrom(level) {
   }
 }
 
+function performMove() {
+  console.log('이동 선택됨');
+  advanceTime();
+}
+
+function openGameMenu() {
+  currentMenu = 'gameMenu';
+  currentNpc = '';
+  updateHeaders();
+  renderNpcList();
+  npcInteractionListEl.innerHTML = '';
+  npcInteractionListEl.style.display = 'none';
+  npcListEl.querySelectorAll('li').forEach(li => li.classList.remove('selected'));
+
+  gameMenuListEl.innerHTML = '';
+  const items = ['상태', '기술', '소지품', '뒤로'];
+  displayMenu(gameMenuListEl, items, (idx) => {
+    if (idx === 0) {
+      openStatusMenu();
+      advanceTime();
+    } else if (idx === 1) {
+      openGameMenuSkills();
+    } else if (idx === 2) {
+      openInventory();
+    } else {
+      showMainMenu();
+    }
+  });
+  menuSectionEl.classList.add('active');
+  npcSectionEl.classList.add('active');
+  actionSectionEl.classList.remove('active');
+}
+
+function openGameMenuSkills() {
+  currentMenu = 'gameMenuSkills';
+  const availableSkills = filterAvailable(skills);
+  displayMenu(gameMenuListEl, toMenuOptions(availableSkills, s => s.name), (idx) => {
+    if (idx === availableSkills.length) {
+      openGameMenu();
+    } else {
+      console.log(`Skill selected: ${availableSkills[idx].name}`);
+      advanceTime();
+    }
+  });
+}
+
 function showMainMenu() {
   currentMenu = 'main';
   currentNpc = '';
@@ -339,17 +389,20 @@ function showMainMenu() {
   renderNpcList();
   actionMenusEl.innerHTML = '';
   actionMenuStack = [];
+  gameMenuListEl.innerHTML = '';
   npcInteractionListEl.innerHTML = '';
   npcInteractionListEl.style.display = 'none';
   npcListEl.querySelectorAll('li').forEach(li => li.classList.remove('selected'));
   npcSectionEl.classList.add('active');
   actionSectionEl.classList.remove('active');
-  inventoryMenuEl.style.display = '';
+  menuSectionEl.classList.remove('active');
+  menuSectionEl.style.display = '';
   inventoryUIEl.style.display = 'none';
   statusUIEl.style.display = 'none';
   document.getElementById('location').style.display = '';
   npcSectionEl.style.display = '';
   actionSectionEl.style.display = '';
+  menuSectionEl.style.display = '';
   document.getElementById('status').style.display = '';
   document.getElementById('player-input-container').style.display = '';
 }
@@ -374,6 +427,7 @@ function openNpcMenu() {
   npcInteractionListEl.style.display = 'none';
   npcSectionEl.classList.add('active');
   actionSectionEl.classList.remove('active');
+  menuSectionEl.classList.remove('active');
 }
 
 function getNpcActions(npc) {
@@ -404,7 +458,7 @@ function startBattle(npc) {
   document.getElementById('location').style.display = 'none';
   npcSectionEl.style.display = 'none';
   actionSectionEl.style.display = 'none';
-  inventoryMenuEl.style.display = 'none';
+  menuSectionEl.style.display = 'none';
   document.getElementById('status').style.display = 'none';
   battleResultEl.style.display = 'none';
   battleLogEl.innerHTML = '';
@@ -756,6 +810,7 @@ function openActionMenu() {
   npcListEl.querySelectorAll('li').forEach(li => li.classList.remove('selected'));
 
   actionMenusEl.innerHTML = '';
+  gameMenuListEl.innerHTML = '';
   actionMenuStack = [{ ul: actionListEl, items: [], onSelect: null }];
   actionMenusEl.appendChild(actionListEl);
   const availableActions = filterAvailable(actions);
@@ -768,16 +823,14 @@ function openActionMenu() {
   });
   actionSectionEl.classList.add('active');
   npcSectionEl.classList.add('active');
+  menuSectionEl.classList.remove('active');
 }
 
 function handleAction(action) {
   switch (action.key) {
-    case 'move':
-      console.log('이동 선택됨');
+    case 'wait':
+      console.log('기다리기 선택됨');
       advanceTime();
-      break;
-    case 'menu':
-      openActionMainMenu();
       break;
     default:
       console.log(`Action not implemented: ${action.key}`);
@@ -785,38 +838,12 @@ function handleAction(action) {
   }
 }
 
-function openActionMainMenu() {
-  setActionMenu(1, ['상태', '기술', '뒤로'], (idx) => {
-    if (idx === 0) {
-      openStatusMenu();
-      advanceTime();
-    } else if (idx === 1) {
-      openActionSkillsMenu();
-    } else {
-      clearActionMenusFrom(1);
-      highlightItem(actionMenuStack[0].ul, -1);
-    }
-  });
-}
-
-function openActionSkillsMenu() {
-  const availableSkills = filterAvailable(skills);
-  setActionMenu(2, toMenuOptions(availableSkills, s => s.name), (idx) => {
-    if (idx === availableSkills.length) {
-      clearActionMenusFrom(2);
-    } else {
-      console.log(`Skill selected: ${availableSkills[idx].name}`);
-      advanceTime();
-    }
-  });
-}
-
 function openStatusMenu() {
   currentMenu = 'status';
   document.getElementById('location').style.display = 'none';
   npcSectionEl.style.display = 'none';
   actionSectionEl.style.display = 'none';
-  inventoryMenuEl.style.display = 'none';
+  menuSectionEl.style.display = 'none';
   document.getElementById('status').style.display = 'none';
   document.getElementById('player-input-container').style.display = 'none';
   statusUIEl.style.display = 'block';
@@ -1112,7 +1139,7 @@ function openInventory() {
   actionSectionEl.style.display = 'none';
   document.getElementById('status').style.display = 'none';
   document.getElementById('player-input-container').style.display = 'none';
-  inventoryMenuEl.style.display = 'none';
+  menuSectionEl.style.display = 'none';
   inventoryUIEl.style.display = 'block';
   renderInventory();
 }
@@ -1161,11 +1188,27 @@ npcHeaderEl.addEventListener('click', () => {
   }
 });
 
+moveHeaderEl.addEventListener('click', () => {
+  if (currentMenu === 'main') {
+    performMove();
+  } else {
+    showMainMenu();
+  }
+});
+
 actionHeaderEl.addEventListener('click', () => {
   if (currentMenu === 'actions') {
     showMainMenu();
   } else {
     openActionMenu();
+  }
+});
+
+menuHeaderEl.addEventListener('click', () => {
+  if (currentMenu === 'gameMenu' || currentMenu === 'gameMenuSkills') {
+    showMainMenu();
+  } else {
+    openGameMenu();
   }
 });
 
@@ -1182,9 +1225,11 @@ function handleCommand() {
     if (num === 1) {
       openNpcMenu();
     } else if (num === 2) {
-      openActionMenu();
+      performMove();
     } else if (num === 3) {
-      openInventory();
+      openActionMenu();
+    } else if (num === 4) {
+      openGameMenu();
     }
   } else if (currentMenu === 'npcs') {
     const loc = locations[currentLocation];
@@ -1215,6 +1260,32 @@ function handleCommand() {
       if (num > 0 && num <= currentLevel.items.length) {
         highlightItem(currentLevel.ul, num - 1);
         currentLevel.onSelect(num - 1);
+      }
+    }
+  } else if (currentMenu === 'gameMenu') {
+    const items = ['상태', '기술', '소지품', '뒤로'];
+    if (num > 0 && num <= items.length) {
+      highlightItem(gameMenuListEl, num - 1);
+      if (num === 1) {
+        openStatusMenu();
+        advanceTime();
+      } else if (num === 2) {
+        openGameMenuSkills();
+      } else if (num === 3) {
+        openInventory();
+      } else {
+        showMainMenu();
+      }
+    }
+  } else if (currentMenu === 'gameMenuSkills') {
+    const availableSkills = filterAvailable(skills);
+    if (num > 0 && num <= availableSkills.length + 1) {
+      highlightItem(gameMenuListEl, num - 1);
+      if (num === availableSkills.length + 1) {
+        openGameMenu();
+      } else {
+        console.log(`Skill selected: ${availableSkills[num - 1].name}`);
+        advanceTime();
       }
     }
   } else if (currentMenu === 'battle') {
@@ -1252,8 +1323,6 @@ playerCommandEl.addEventListener('keypress', (e) => {
     handleCommand();
   }
 });
-
-inventoryHeaderEl.addEventListener('click', openInventory);
 closeInventoryEl.addEventListener('click', closeInventory);
 setupUnequipListener(equipRightHandEl, 'rightHand');
 setupUnequipListener(equipLeftHandEl, 'leftHand');

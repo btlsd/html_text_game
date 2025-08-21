@@ -1,6 +1,5 @@
 {
   "actions": [
-    { "key": "move", "name": "이동", "conditions": [] },
-    { "key": "menu", "name": "메뉴", "conditions": [] }
+    { "key": "wait", "name": "기다리기", "conditions": [] }
   ]
 }
