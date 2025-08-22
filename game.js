@@ -359,8 +359,6 @@ function highlightItem(listEl, index) {
 
 function displayMenu(listEl, items, onSelect) {
   listEl.innerHTML = '';
-  listEl.classList.add('tree');
-  listEl.classList.add('animating');
   const elements = items.map((text, idx) => {
     const li = document.createElement('li');
     li.style.display = 'none';
@@ -378,12 +376,10 @@ function displayMenu(listEl, items, onSelect) {
   let index = 0;
   function showNext() {
     if (index >= elements.length) {
-      listEl.classList.remove('animating');
       return;
     }
     const el = elements[index];
     el.li.style.display = '';
-    el.li.classList.add('show-line');
     let char = 0;
     const interval = setInterval(() => {
       if (char < el.fullText.length) {
@@ -818,7 +814,7 @@ async function enemyTurn() {
 }
 
 function flashScreen(color, damage, count = 1) {
-  const duration = Math.min(100 + damage * 20, 1000);
+  const duration = Math.min(100 + damage * 20, 1000) / 10;
   return new Promise(resolve => {
     let flashes = 0;
     const doFlash = () => {
@@ -866,14 +862,16 @@ function updateBattleTurn() {
       battleState.playerReady = true;
       renderBattleMenu();
     }
-  }
-  battleState.enemyGauge += battleState.enemy.stats.agility;
-  if (battleState.enemyGauge >= 100) {
-    battleState.enemyGauge -= 100;
-    battleState.processing = true;
-    enemyTurn().then(() => {
-      if (battleState) battleState.processing = false;
-    });
+    if (!battleState.playerReady) {
+      battleState.enemyGauge += battleState.enemy.stats.agility;
+      if (battleState.enemyGauge >= 100) {
+        battleState.enemyGauge -= 100;
+        battleState.processing = true;
+        enemyTurn().then(() => {
+          if (battleState) battleState.processing = false;
+        });
+      }
+    }
   }
   renderTurnBar();
 }
