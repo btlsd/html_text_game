@@ -212,6 +212,8 @@ let currentCategory = '';
 let currentSubcategory = null;
 let actionMenuStack = [];
 let currentTime = 8;
+let currentLocationGrants = new Set();
+let currentLocationAttitude = 'neutral';
 
 function getTimeSegment() {
   if (currentTime >= 4 && currentTime <= 7) return { key: 'morning', name: '아침' };
@@ -220,6 +222,16 @@ function getTimeSegment() {
   if (currentTime >= 16 && currentTime <= 19) return { key: 'evening', name: '저녁' };
   if (currentTime >= 20 && currentTime <= 23) return { key: 'night', name: '밤' };
   return { key: 'lateNight', name: '심야' };
+}
+
+function isWithinTime(range) {
+  if (!range) return true;
+  const start = range.start ?? 0;
+  const end = range.end ?? 24;
+  if (start <= end) {
+    return currentTime >= start && currentTime < end;
+  }
+  return currentTime >= start || currentTime < end;
 }
 
 function addLog(message) {
@@ -240,6 +252,8 @@ function logLocation() {
     ? loc.description
     : '';
   if (desc) addLog(desc);
+  const moodMap = { positive: '긍정적', neutral: '중립적', negative: '부정적' };
+  addLog(`분위기: ${moodMap[currentLocationAttitude] || currentLocationAttitude}`);
 }
 
 function logNpcDescription(npc) {
@@ -249,8 +263,37 @@ function logNpcDescription(npc) {
   }
 }
 
+function getLocationAttitude(loc) {
+  if (!loc || !loc.attitudes) return 'neutral';
+  if (evaluateCondition(loc.attitudes.positive)) return 'positive';
+  if (evaluateCondition(loc.attitudes.neutral)) return 'neutral';
+  return 'negative';
+}
+
+function updateLocationAttitude() {
+  const loc = locations[currentLocation];
+  let attitude = getLocationAttitude(loc);
+  if (loc && loc.entry) {
+    if (loc.entry.conditions && !evaluateCondition(loc.entry.conditions)) attitude = 'negative';
+    if (loc.entry.time && !isWithinTime(loc.entry.time)) attitude = 'negative';
+  }
+  currentLocationAttitude = attitude;
+}
+
+function applyLocationGrants(loc) {
+  currentLocationGrants.forEach(cond => player.conditions.delete(cond));
+  currentLocationGrants.clear();
+  if (loc && Array.isArray(loc.grantConditions)) {
+    loc.grantConditions.forEach(cond => {
+      player.conditions.add(cond);
+      currentLocationGrants.add(cond);
+    });
+  }
+}
+
 function advanceTime(hours = 1) {
   currentTime = (currentTime + hours) % 24;
+  updateLocationAttitude();
   render();
   logLocation();
 }
@@ -381,8 +424,51 @@ function clearActionMenusFrom(level) {
 }
 
 function performMove() {
-  console.log('이동 선택됨');
+  currentMenu = 'move';
+  currentNpc = '';
+  updateHeaders();
+  renderNpcList();
+  npcInteractionListEl.innerHTML = '';
+  npcInteractionListEl.style.display = 'none';
+  npcListEl.querySelectorAll('li').forEach(li => li.classList.remove('selected'));
+
+  actionMenusEl.innerHTML = '';
+  gameMenuListEl.innerHTML = '';
+  actionMenuStack = [{ ul: actionListEl, items: [], onSelect: null }];
+  actionMenusEl.appendChild(actionListEl);
+
+  const loc = locations[currentLocation];
+  const connections = loc && Array.isArray(loc.connections) ? loc.connections : [];
+  setActionMenu(0, toMenuOptions(connections, id => (locations[id] && locations[id].name) ? locations[id].name : id), (idx) => {
+    if (idx === connections.length) {
+      showMainMenu();
+    } else {
+      tryMove(connections[idx]);
+    }
+  });
+
+  actionSectionEl.classList.add('active');
+  npcSectionEl.classList.add('active');
+  menuSectionEl.classList.remove('active');
+}
+
+function tryMove(target) {
+  const loc = locations[target];
+  if (!loc) return;
+  if (loc.entry && loc.entry.locked && !evaluateCondition(loc.entry.locked)) {
+    addLog('문이 잠겨 있습니다.');
+    return;
+  }
+  const entryDenied = loc.entry && (
+    (loc.entry.conditions && !evaluateCondition(loc.entry.conditions)) ||
+    (loc.entry.time && !isWithinTime(loc.entry.time))
+  );
+  currentLocation = target;
+  applyLocationGrants(loc);
+  updateLocationAttitude();
   advanceTime();
+  if (entryDenied) addLog('당신은 몰래 침입했습니다.');
+  showMainMenu();
 }
 
 function openGameMenu() {
@@ -889,6 +975,13 @@ function handleAction(action) {
       console.log('기다리기 선택됨');
       advanceTime();
       break;
+    case 'sneak':
+    case 'stealth':
+    case 'lockpick':
+    case 'hack':
+      console.log(`${action.name} 선택됨`);
+      advanceTime();
+      break;
     default:
       console.log(`Action not implemented: ${action.key}`);
       advanceTime();
@@ -1231,6 +1324,8 @@ async function loadData() {
   categories = inventoryData.categories;
   npcData = npcInfo.npcs;
   currentCategory = categories[0] ? categories[0].key : '';
+  applyLocationGrants(locations[currentLocation]);
+  updateLocationAttitude();
   render();
   showMainMenu();
   logLocation();
@@ -1310,6 +1405,14 @@ function handleCommand() {
         startBattle(currentNpc);
       } else {
         console.log(`Interaction with ${currentNpc}: ${action}`);
+      }
+    }
+  } else if (currentMenu === 'move') {
+    if (actionMenuStack.length > 0) {
+      const currentLevel = actionMenuStack[actionMenuStack.length - 1];
+      if (num > 0 && num <= currentLevel.items.length) {
+        highlightItem(currentLevel.ul, num - 1);
+        currentLevel.onSelect(num - 1);
       }
     }
   } else if (currentMenu === 'actions') {

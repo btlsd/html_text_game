@@ -1,36 +1,115 @@
 {
-  "start": "town",
+  "start": "city",
   "locations": {
-    "town": {
-      "name": "마을 광장",
-      "description": "당신은 붐비는 마을 광장에 서 있습니다.",
+    "city": {
+      "name": "도시 광장",
+      "description": "당신은 번화한 도시의 중심 광장에 서 있습니다.",
       "descriptions": {
-        "morning": "아침의 마을 광장은 상인들이 분주히 하루를 준비합니다.",
-        "day": "낮의 마을 광장에는 사람들로 활기가 넘칩니다.",
-        "afternoon": "오후가 되자 마을 광장은 조금 한산해졌습니다.",
-        "evening": "저녁 노을이 마을 광장을 물들입니다.",
-        "night": "밤이 찾아와 마을 광장은 조용합니다.",
-        "lateNight": "심야의 마을 광장은 거의 텅 비어 있습니다."
+        "morning": "아침의 도시 광장은 상인들이 분주히 하루를 준비합니다.",
+        "day": "낮의 도시 광장에는 사람들로 활기가 넘칩니다.",
+        "afternoon": "오후가 되자 도시 광장은 조금 한산해졌습니다.",
+        "evening": "저녁 노을이 도시 광장을 물들입니다.",
+        "night": "밤이 찾아와 도시 광장은 조용합니다.",
+        "lateNight": "심야의 도시 광장은 거의 텅 비어 있습니다."
       },
       "npcs": [
         "상인",
         "경비병",
         "전투용 허수아비"
-      ]
-    },
-    "forest": {
-      "description": "나무가 빽빽한 숲. 어딘가에서 소리가 들립니다.",
-      "descriptions": {
-        "morning": "아침의 숲은 새들의 지저귐으로 가득합니다.",
-        "day": "낮의 숲은 햇살이 나뭇잎 사이로 비칩니다.",
-        "afternoon": "오후의 숲은 긴 그림자가 드리워집니다.",
-        "evening": "저녁이 되자 숲은 서서히 어둠으로 잠식됩니다.",
-        "night": "밤의 숲은 으스스한 기운이 감돕니다.",
-        "lateNight": "심야의 숲은 모든 것이 고요합니다."
+      ],
+      "connections": ["mercenary_office", "shop", "city_outskirts"],
+      "grantConditions": ["city_access"],
+      "attitudes": {
+        "positive": ["city_access"],
+        "neutral": [],
+        "negative": []
       },
-      "npcs": [
-        "고블린"
-      ]
+      "entry": { "time": { "start": 0, "end": 24 } }
+    },
+    "mercenary_office": {
+      "name": "용병 사무소",
+      "description": "용병들이 의뢰를 찾기 위해 모이는 곳입니다.",
+      "descriptions": {
+        "morning": "아침의 사무소는 차분하지만 활동적입니다.",
+        "day": "낮에도 사무소는 의뢰인과 용병들로 북적입니다.",
+        "afternoon": "오후에도 사무소의 열기는 식지 않습니다.",
+        "evening": "저녁이 되어도 사무소는 밝은 조명 아래 활기가 넘칩니다.",
+        "night": "밤에도 몇몇 용병들이 남아 의뢰를 검토합니다.",
+        "lateNight": "심야에도 사무소는 24시간 불이 꺼지지 않습니다."
+      },
+      "npcs": ["사무원"],
+      "connections": ["city", "office_lounge"],
+      "grantConditions": ["guild_access"],
+      "attitudes": {
+        "positive": ["guild_access"],
+        "neutral": [],
+        "negative": []
+      },
+      "entry": { "time": { "start": 0, "end": 24 } }
+    },
+    "office_lounge": {
+      "name": "휴게실",
+      "description": "용병들을 위한 간이 휴게실입니다.",
+      "descriptions": {
+        "morning": "아침에도 몇몇 용병들이 휴식을 취하고 있습니다.",
+        "day": "낮의 휴게실은 담소를 나누는 용병들로 가득합니다.",
+        "afternoon": "오후의 휴게실은 조용한 분위기입니다.",
+        "evening": "저녁이 되어도 휴게실은 따뜻한 조명을 유지합니다.",
+        "night": "밤의 휴게실은 피곤한 용병들로 한산합니다.",
+        "lateNight": "심야의 휴게실에는 거의 사람이 없습니다."
+      },
+      "connections": ["mercenary_office"],
+      "grantConditions": ["guild_access"],
+      "attitudes": {
+        "positive": ["guild_access"],
+        "neutral": [],
+        "negative": []
+      },
+      "entry": { "conditions": ["guild_access"], "locked": ["guild_access"], "time": { "start": 0, "end": 24 } }
+    },
+    "shop": {
+      "name": "상점",
+      "description": "각종 물품을 파는 상점입니다.",
+      "npcs": ["상인"],
+      "connections": ["city"],
+      "attitudes": {
+        "positive": [],
+        "neutral": [],
+        "negative": []
+      },
+      "entry": { "time": { "start": 8, "end": 20 } }
+    },
+    "city_outskirts": {
+      "name": "도시 외곽",
+      "description": "도시를 벗어나 황야로 이어지는 지역입니다.",
+      "connections": ["city", "wilderness"],
+      "attitudes": {
+        "positive": [],
+        "neutral": [],
+        "negative": []
+      }
+    },
+    "wilderness": {
+      "name": "황야",
+      "description": "도시 밖 끝없는 황야입니다.",
+      "npcs": ["고블린"],
+      "connections": ["city_outskirts", "abandoned_factory"],
+      "attitudes": {
+        "positive": [],
+        "neutral": [],
+        "negative": []
+      }
+    },
+    "abandoned_factory": {
+      "name": "폐공장",
+      "description": "오래전 버려진 SF풍의 공장입니다.",
+      "connections": ["wilderness"],
+      "attitudes": {
+        "positive": [],
+        "neutral": [],
+        "negative": []
+      },
+      "entry": { "conditions": ["factory_keycard"], "locked": ["factory_keycard"] }
     }
   }
 }
