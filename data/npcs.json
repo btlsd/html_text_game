@@ -6,6 +6,12 @@
       "stats": { "strength": 1, "perception": 5, "endurance": 2, "charisma": 5, "intelligence": 4, "agility": 2 },
       "xp": 0
     },
+    "사무원": {
+      "name": "사무원",
+      "description": "의뢰를 접수하는 사무원입니다.",
+      "stats": { "strength": 2, "perception": 4, "endurance": 3, "charisma": 4, "intelligence": 5, "agility": 2 },
+      "xp": 0
+    },
     "경비병": {
       "name": "경비병",
       "description": "단단한 갑옷을 입은 경비병이 경계의 눈빛을 보냅니다.",

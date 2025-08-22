@@ -1,5 +1,9 @@
 {
   "actions": [
-    { "key": "wait", "name": "기다리기", "conditions": [] }
+    { "key": "wait", "name": "기다리기", "conditions": [] },
+    { "key": "sneak", "name": "잠입", "conditions": [] },
+    { "key": "stealth", "name": "은신", "conditions": [] },
+    { "key": "lockpick", "name": "자물쇠 해제", "conditions": [] },
+    { "key": "hack", "name": "해킹", "conditions": [] }
   ]
 }
