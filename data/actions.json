@@ -4,6 +4,9 @@
     { "key": "sneak", "name": "잠입", "conditions": [] },
     { "key": "stealth", "name": "은신", "conditions": [] },
     { "key": "lockpick", "name": "자물쇠 해제", "conditions": [] },
-    { "key": "hack", "name": "해킹", "conditions": [] }
+    { "key": "hack", "name": "해킹", "conditions": [] },
+    { "key": "merc_shop", "name": "용병 상점", "conditions": ["at_mercenary_office"] },
+    { "key": "use_injector", "name": "보존제 주입기 사용", "conditions": ["at_office_lounge"] },
+    { "key": "buy_food", "name": "음식 먹기", "conditions": ["at_city_shop"] }
   ]
 }

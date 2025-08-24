@@ -39,7 +39,7 @@
       },
       "npcs": ["사무원"],
       "connections": ["city", "office_lounge"],
-      "grantConditions": ["guild_access"],
+      "grantConditions": ["guild_access", "at_mercenary_office"],
       "attitudes": {
         "positive": ["guild_access"],
         "neutral": [],
@@ -59,7 +59,7 @@
         "lateNight": "심야의 휴게실에는 거의 사람이 없습니다."
       },
       "connections": ["mercenary_office"],
-      "grantConditions": ["guild_access"],
+      "grantConditions": ["guild_access", "at_office_lounge"],
       "attitudes": {
         "positive": ["guild_access"],
         "neutral": [],
@@ -72,6 +72,7 @@
       "description": "각종 물품을 파는 상점입니다.",
       "npcs": ["상인"],
       "connections": ["city"],
+      "grantConditions": ["at_city_shop"],
       "attitudes": {
         "positive": [],
         "neutral": [],
