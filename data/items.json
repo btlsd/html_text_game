@@ -39,6 +39,24 @@
       "subtype": "back",
       "conditions": ["guild_access"],
       "properties": {}
+    },
+    "iron_sword": {
+      "name": "철 검",
+      "type": "weapon",
+      "subtype": "melee",
+      "properties": {
+        "strWeight": 80,
+        "multiplier": 1.2,
+        "bonus": 8
+      }
+    },
+    "leather_armor": {
+      "name": "가죽 갑옷",
+      "type": "armor",
+      "subtype": "top",
+      "properties": {
+        "defense": 3
+      }
     }
   }
 }

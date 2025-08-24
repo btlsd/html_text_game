@@ -32,6 +32,9 @@ const hpBarEl = document.getElementById('hp-bar');
 const hpTextEl = document.getElementById('hp-text');
 const staminaBarEl = document.getElementById('stamina-bar');
 const staminaTextEl = document.getElementById('stamina-text');
+const preservationTextEl = document.getElementById('preservation-text');
+const activityPointsTextEl = document.getElementById('activity-points-text');
+const moneyTextEl = document.getElementById('money-text');
 const battleUIEl = document.getElementById('battle-ui');
 const enemyNameEl = document.getElementById('enemy-name');
 const enemyHpBarEl = document.getElementById('enemy-hp-bar');
@@ -86,7 +89,10 @@ const conditionDisplayNames = {
   weapon_melee: '냉병기 장착',
   weapon_blunt: '둔기 장착',
   weapon_firearm: '화기 장착',
-  weapon_energy: '에너지무기 장착'
+  weapon_energy: '에너지무기 장착',
+  at_mercenary_office: '용병 사무소',
+  at_office_lounge: '휴게실',
+  at_city_shop: '상점가'
 };
 
 const player = {
@@ -100,6 +106,9 @@ const player = {
   },
   hp: 0,
   stamina: 0,
+  activityPoints: 0,
+  money: 0,
+  preservation: 0,
   extraStats: 0,
   tempStats: {},
   level: 1,
@@ -190,6 +199,9 @@ function calculateDamage(attacker, defender, weapon = null, defending = false) {
 
 player.hp = getMaxHp();
 player.stamina = getMaxStamina();
+player.activityPoints = 50;
+player.money = 100;
+player.preservation = 24;
 
 let npcData = {};
 
@@ -205,6 +217,15 @@ let items = {};
 let inventory = [];
 let equipment = {};
 let categories = [];
+
+const mercenaryShop = {
+  weapons: [
+    { id: 'iron_sword', name: '철 검', cost: 30 }
+  ],
+  armor: [
+    { id: 'leather_armor', name: '가죽 갑옷', cost: 25 }
+  ]
+};
 let currentLocation = '';
 let currentMenu = 'main';
 let currentNpc = '';
@@ -293,6 +314,13 @@ function applyLocationGrants(loc) {
 
 function advanceTime(hours = 1) {
   currentTime = (currentTime + hours) % 24;
+  player.preservation = Math.max(0, player.preservation - hours);
+  if (player.preservation === 0) {
+    addLog('보존 기간이 끝났습니다. 당신은 사망했습니다.');
+    alert('보존 기간이 끝났습니다. 게임이 초기화됩니다.');
+    location.reload();
+    return;
+  }
   updateLocationAttitude();
   render();
   logLocation();
@@ -331,6 +359,9 @@ function render() {
   hpTextEl.textContent = `${player.hp}/${maxHp}`;
   staminaBarEl.style.width = `${(player.stamina / maxStamina) * 100}%`;
   staminaTextEl.textContent = `${player.stamina}/${maxStamina}`;
+  preservationTextEl.textContent = `${player.preservation}`;
+  activityPointsTextEl.textContent = `${player.activityPoints}`;
+  moneyTextEl.textContent = `${player.money}`;
 }
 
 function renderNpcList() {
@@ -980,10 +1011,72 @@ function handleAction(action) {
       console.log(`${action.name} 선택됨`);
       advanceTime();
       break;
+    case 'merc_shop':
+      openMercenaryShop();
+      advanceTime();
+      break;
+    case 'use_injector':
+      usePreservationInjector();
+      advanceTime();
+      break;
+    case 'buy_food':
+      buyFood();
+      advanceTime();
+      break;
     default:
       console.log(`Action not implemented: ${action.key}`);
       advanceTime();
   }
+}
+
+function openMercenaryShop() {
+  const choice = prompt('1. 무기 상점\n2. 방어구 상점\n3. 뒤로');
+  if (choice === '1') {
+    purchaseFromShop(mercenaryShop.weapons);
+  } else if (choice === '2') {
+    purchaseFromShop(mercenaryShop.armor);
+  }
+}
+
+function purchaseFromShop(list) {
+  const options = list.map((it, idx) => `${idx + 1}. ${it.name} (${it.cost} 활동도)`).join('\n');
+  const choice = prompt(options + `\n${list.length + 1}. 뒤로`);
+  const idx = parseInt(choice, 10) - 1;
+  if (idx >= 0 && idx < list.length) {
+    const item = list[idx];
+    if (player.activityPoints >= item.cost) {
+      player.activityPoints -= item.cost;
+      inventory.push(item.id);
+      addLog(`${item.name}을(를) 구입했습니다.`);
+    } else {
+      addLog('활동도가 부족합니다.');
+    }
+    // rendering handled after time advance
+  }
+}
+
+function usePreservationInjector() {
+  const cost = 10;
+  const gain = 24;
+  if (player.activityPoints < cost) {
+    addLog('활동도가 부족합니다.');
+    return;
+  }
+  player.activityPoints -= cost;
+  player.preservation += gain;
+  addLog(`보존제가 주입되어 보존 기간이 ${gain}시간 늘어났습니다.`);
+}
+
+function buyFood() {
+  const cost = 10;
+  const gain = 6;
+  if (player.money < cost) {
+    addLog('돈이 부족합니다.');
+    return;
+  }
+  player.money -= cost;
+  player.preservation += gain;
+  addLog(`음식을 먹어 보존 기간이 ${gain}시간 늘어났습니다.`);
 }
 
 function openStatusMenu() {
