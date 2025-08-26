@@ -315,3 +315,48 @@ body {
   background-color: #ff0000;
 }
 
+#trade-ui {
+  display: none;
+  margin-top: 20px;
+}
+
+#trade-container {
+  display: flex;
+}
+
+#trade-left,
+#trade-middle,
+#trade-right {
+  width: 33%;
+}
+
+#trade-log {
+  height: 200px;
+  border: 1px solid #00ff00;
+  padding: 5px;
+  overflow-y: auto;
+  margin-top: 10px;
+}
+
+#shop-tabs button {
+  background-color: #000;
+  color: #00ff00;
+  border: 1px solid #00ff00;
+  cursor: pointer;
+  margin-right: 5px;
+}
+
+#shop-item-list,
+#shop-inventory-list {
+  list-style: none;
+  padding-left: 0;
+}
+
+#close-trade {
+  margin-top: 10px;
+  background-color: #000;
+  color: #00ff00;
+  border: 1px solid #00ff00;
+  cursor: pointer;
+}
+

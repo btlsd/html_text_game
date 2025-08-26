@@ -28,6 +28,13 @@ const equipBackEl = document.getElementById('equip-back');
 const equipGlovesEl = document.getElementById('equip-gloves');
 const equipShoesEl = document.getElementById('equip-shoes');
 const closeInventoryEl = document.getElementById('close-inventory');
+const tradeUIEl = document.getElementById('trade-ui');
+const tradeLogEl = document.getElementById('trade-log');
+const tradeAssetsEl = document.getElementById('trade-assets');
+const shopTabsEl = document.getElementById('shop-tabs');
+const shopItemListEl = document.getElementById('shop-item-list');
+const shopInventoryListEl = document.getElementById('shop-inventory-list');
+const closeTradeEl = document.getElementById('close-trade');
 const hpBarEl = document.getElementById('hp-bar');
 const hpTextEl = document.getElementById('hp-text');
 const staminaBarEl = document.getElementById('stamina-bar');
@@ -93,6 +100,10 @@ const conditionDisplayNames = {
   at_mercenary_office: '용병 사무소',
   at_office_lounge: '휴게실',
   at_city_shop: '상점가'
+};
+
+const currencyDisplayNames = {
+  money: '원'
 };
 
 const player = {
@@ -217,15 +228,28 @@ let items = {};
 let inventory = [];
 let equipment = {};
 let categories = [];
-
 const mercenaryShop = {
-  weapons: [
-    { id: 'iron_sword', name: '철 검', cost: 30 }
-  ],
-  armor: [
-    { id: 'leather_armor', name: '가죽 갑옷', cost: 25 }
-  ]
+  currency: 'money',
+  allowSell: true,
+  categories: {
+    weapons: {
+      label: '무기',
+      items: [
+        { id: 'iron_sword', price: 30 }
+      ]
+    },
+    armor: {
+      label: '방어구',
+      items: [
+        { id: 'leather_armor', price: 25 }
+      ]
+    }
+  }
 };
+let currentShop = null;
+let currentShopCategory = '';
+let shopAllowSell = false;
+let shopCurrency = 'money';
 let currentLocation = '';
 let currentMenu = 'main';
 let currentNpc = '';
@@ -1030,29 +1054,129 @@ function handleAction(action) {
 }
 
 function openMercenaryShop() {
-  const choice = prompt('1. 무기 상점\n2. 방어구 상점\n3. 뒤로');
-  if (choice === '1') {
-    purchaseFromShop(mercenaryShop.weapons);
-  } else if (choice === '2') {
-    purchaseFromShop(mercenaryShop.armor);
+  openShopUI(mercenaryShop);
+}
+
+function openShopUI(shop) {
+  currentShop = shop;
+  shopAllowSell = !!shop.allowSell;
+  shopCurrency = shop.currency || 'money';
+  currentShopCategory = Object.keys(shop.categories)[0] || '';
+  currentMenu = 'shop';
+  document.getElementById('location').style.display = 'none';
+  npcSectionEl.style.display = 'none';
+  actionSectionEl.style.display = 'none';
+  menuSectionEl.style.display = 'none';
+  document.getElementById('status').style.display = 'none';
+  document.getElementById('player-input-container').style.display = 'none';
+  tradeUIEl.style.display = 'block';
+  tradeLogEl.innerHTML = '';
+  renderShopTabs();
+  renderShopItems();
+  renderShopInventory();
+  updateShopAssets();
+}
+
+function renderShopTabs() {
+  shopTabsEl.innerHTML = '';
+  const entries = Object.entries(currentShop.categories);
+  entries.forEach(([key, cat]) => {
+    const btn = document.createElement('button');
+    btn.textContent = cat.label;
+    btn.addEventListener('click', () => {
+      currentShopCategory = key;
+      renderShopItems();
+    });
+    shopTabsEl.appendChild(btn);
+  });
+}
+
+function renderShopItems() {
+  shopItemListEl.innerHTML = '';
+  const cat = currentShop.categories[currentShopCategory];
+  if (!cat) return;
+  cat.items.forEach((item) => {
+    const li = document.createElement('li');
+    const data = items[item.id];
+    li.textContent = `${data ? data.name : item.id} - ${item.price}`;
+    li.addEventListener('click', () => selectShopItem(item));
+    shopItemListEl.appendChild(li);
+  });
+}
+
+function renderShopInventory() {
+  shopInventoryListEl.innerHTML = '';
+  inventory.forEach((itemId) => {
+    const li = document.createElement('li');
+    const data = items[itemId];
+    li.textContent = data ? data.name : itemId;
+    if (shopAllowSell) {
+      li.addEventListener('click', () => selectInventoryItem(itemId));
+    }
+    shopInventoryListEl.appendChild(li);
+  });
+}
+
+function selectShopItem(item) {
+  const data = items[item.id];
+  addShopLog(`${data ? data.name : item.id} 가격 ${item.price}`);
+  if (confirm('구매하시겠습니까?')) {
+    if (player[shopCurrency] >= item.price) {
+      player[shopCurrency] -= item.price;
+      inventory.push(item.id);
+      addShopLog('구매 완료');
+      renderShopInventory();
+      updateShopAssets();
+    } else {
+      addShopLog('자산이 부족합니다.');
+    }
   }
 }
 
-function purchaseFromShop(list) {
-  const options = list.map((it, idx) => `${idx + 1}. ${it.name} (${it.cost} 활동도)`).join('\n');
-  const choice = prompt(options + `\n${list.length + 1}. 뒤로`);
-  const idx = parseInt(choice, 10) - 1;
-  if (idx >= 0 && idx < list.length) {
-    const item = list[idx];
-    if (player.activityPoints >= item.cost) {
-      player.activityPoints -= item.cost;
-      inventory.push(item.id);
-      addLog(`${item.name}을(를) 구입했습니다.`);
-    } else {
-      addLog('활동도가 부족합니다.');
-    }
-    // rendering handled after time advance
+function selectInventoryItem(itemId) {
+  const price = getSellPrice(itemId);
+  const data = items[itemId];
+  if (price <= 0) {
+    addShopLog('판매 불가');
+    return;
   }
+  addShopLog(`${data ? data.name : itemId} 판매가 ${price}`);
+  if (confirm('판매하시겠습니까?')) {
+    const idx = inventory.indexOf(itemId);
+    if (idx !== -1) inventory.splice(idx, 1);
+    player[shopCurrency] += price;
+    addShopLog('판매 완료');
+    renderShopInventory();
+    updateShopAssets();
+  }
+}
+
+function getSellPrice(itemId) {
+  for (const key in currentShop.categories) {
+    const cat = currentShop.categories[key];
+    const entry = cat.items.find((it) => it.id === itemId);
+    if (entry) return Math.floor(entry.price / 2);
+  }
+  return 0;
+}
+
+function updateShopAssets() {
+  const unit = currencyDisplayNames[shopCurrency] || '';
+  tradeAssetsEl.textContent = `${player[shopCurrency]} ${unit}`;
+}
+
+function addShopLog(msg) {
+  const p = document.createElement('p');
+  p.textContent = msg;
+  tradeLogEl.appendChild(p);
+  tradeLogEl.scrollTop = tradeLogEl.scrollHeight;
+}
+
+function closeTradeUI() {
+  tradeUIEl.style.display = 'none';
+  document.getElementById('player-input-container').style.display = 'flex';
+  showMainMenu();
+  render();
 }
 
 function usePreservationInjector() {
@@ -1575,6 +1699,7 @@ playerCommandEl.addEventListener('keypress', (e) => {
     handleCommand();
   }
 });
+closeTradeEl.addEventListener('click', closeTradeUI);
 closeInventoryEl.addEventListener('click', closeInventory);
 setupUnequipListener(equipRightHandEl, 'rightHand');
 setupUnequipListener(equipLeftHandEl, 'leftHand');
