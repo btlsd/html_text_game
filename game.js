@@ -286,6 +286,13 @@ function addLog(message) {
   logEl.scrollTop = logEl.scrollHeight;
 }
 
+function addLogSeparator(target) {
+  const hr = document.createElement('hr');
+  hr.className = 'log-separator';
+  target.appendChild(hr);
+  target.scrollTop = target.scrollHeight;
+}
+
 function logLocation() {
   const loc = locations[currentLocation];
   const seg = getTimeSegment();
@@ -348,16 +355,17 @@ function advanceTime(hours = 1) {
   updateLocationAttitude();
   render();
   logLocation();
+  addLogSeparator(logEl);
 }
 
 function updateHeaders() {
   if (currentMenu === 'main') {
-    npcHeaderEl.textContent = '1. 인물';
+    npcHeaderEl.textContent = '1. 개체';
     moveHeaderEl.textContent = '2. 이동';
     actionHeaderEl.textContent = '3. 행동';
     menuHeaderEl.textContent = '4. 메뉴';
   } else {
-    npcHeaderEl.textContent = '인물';
+    npcHeaderEl.textContent = '개체';
     moveHeaderEl.textContent = '이동';
     actionHeaderEl.textContent = '행동';
     menuHeaderEl.textContent = '메뉴';
@@ -376,7 +384,9 @@ function render() {
     : loc
     ? loc.description
     : '';
-  locationDescEl.textContent = desc;
+  if (locationDescEl) {
+    locationDescEl.textContent = desc;
+  }
   const maxHp = getMaxHp();
   const maxStamina = getMaxStamina();
   hpBarEl.style.width = `${(player.hp / maxHp) * 100}%`;
@@ -508,6 +518,7 @@ function tryMove(target) {
   if (!loc) return;
   if (loc.entry && loc.entry.locked && !evaluateCondition(loc.entry.locked)) {
     addLog('문이 잠겨 있습니다.');
+    addLogSeparator(logEl);
     return;
   }
   const entryDenied = loc.entry && (
@@ -712,6 +723,7 @@ async function battleAttack() {
   }
   battleState.stats.skillUsage['공격'] = stat;
   await typeBattleLog(message);
+  addLogSeparator(battleLogEl);
   if (enemy.hp <= 0) {
     endBattle(true);
     return;
@@ -726,6 +738,7 @@ function battleDefend() {
   battleState.defending = true;
   renderTurnBar();
   renderBattleMenu();
+  addLogSeparator(battleLogEl);
 }
 
 function openBattleSkillMenu() {
@@ -747,6 +760,7 @@ async function useSkill(skill) {
   const cost = skill.staminaCost || 0;
   if (player.stamina < cost) {
     await typeBattleLog('기력이 부족합니다.');
+    addLogSeparator(battleLogEl);
     renderBattleMenu();
     return;
   }
@@ -785,6 +799,7 @@ async function useSkill(skill) {
   }
   battleState.stats.skillUsage[skill.name] = stat;
   await typeBattleLog(message);
+  addLogSeparator(battleLogEl);
   if (enemy.hp <= 0) {
     endBattle(true);
     return;
@@ -824,6 +839,7 @@ async function useBattleItem(id) {
   await typeBattleLog(`${items[id].name} 사용!`);
   renderBattleMenu();
   battleState.processing = false;
+  addLogSeparator(battleLogEl);
 }
 
 async function attemptRun() {
@@ -834,13 +850,16 @@ async function attemptRun() {
   const enemy = battleState.enemy;
   const chance = player.stats.agility / (player.stats.agility + enemy.stats.agility);
   if (Math.random() < chance) {
+    addLogSeparator(battleLogEl);
     endBattle(null);
+    return;
   } else {
     await typeBattleLog('도주에 실패했다!');
   }
   renderTurnBar();
   renderBattleMenu();
   battleState.processing = false;
+  addLogSeparator(battleLogEl);
 }
 
 async function enemyTurn() {
@@ -975,6 +994,7 @@ function openNpcInteractions(npc, npcIndex) {
   updateHeaders();
   highlightItem(npcListEl, npcIndex);
   logNpcDescription(npc);
+  addLogSeparator(logEl);
   const npcActions = getNpcActions(npc);
   const items = [...npcActions, '뒤로'];
   displayMenu(npcInteractionListEl, items, (idx) => {
@@ -1131,6 +1151,7 @@ function selectShopItem(item) {
       addShopLog('자산이 부족합니다.');
     }
   }
+  addLogSeparator(tradeLogEl);
 }
 
 function selectInventoryItem(itemId) {
@@ -1138,6 +1159,7 @@ function selectInventoryItem(itemId) {
   const data = items[itemId];
   if (price <= 0) {
     addShopLog('판매 불가');
+    addLogSeparator(tradeLogEl);
     return;
   }
   addShopLog(`${data ? data.name : itemId} 판매가 ${price}`);
@@ -1149,6 +1171,7 @@ function selectInventoryItem(itemId) {
     renderShopInventory();
     updateShopAssets();
   }
+  addLogSeparator(tradeLogEl);
 }
 
 function getSellPrice(itemId) {
