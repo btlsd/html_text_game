@@ -83,6 +83,7 @@
     "city_outskirts": {
       "name": "도시 외곽",
       "description": "도시를 벗어나 황야로 이어지는 지역입니다.",
+      "npcs": ["네온 갱단원", "데이터 해적"],
       "connections": ["city", "wilderness"],
       "attitudes": {
         "positive": [],
@@ -93,7 +94,7 @@
     "wilderness": {
       "name": "황야",
       "description": "도시 밖 끝없는 황야입니다.",
-      "npcs": ["고블린"],
+      "npcs": ["불량 드론", "합성 생명체"],
       "connections": ["city_outskirts", "abandoned_factory"],
       "attitudes": {
         "positive": [],
@@ -104,6 +105,7 @@
     "abandoned_factory": {
       "name": "폐공장",
       "description": "오래전 버려진 SF풍의 공장입니다.",
+      "npcs": ["보안 로봇"],
       "connections": ["wilderness"],
       "attitudes": {
         "positive": [],

@@ -1,0 +1,21 @@
+{
+  "quests": {
+    "rogue_drone_hunt": {
+      "name": "불량 드론 처리",
+      "type": "battle",
+      "giver": "사무원",
+      "target": "불량 드론",
+      "evidenceItem": "drone_core",
+      "count": 1,
+      "reward": {"activity": 100}
+    },
+    "deliver_letter": {
+      "name": "서신 전달",
+      "type": "delivery",
+      "giver": "사무원",
+      "recipient": "상인",
+      "item": "guild_letter",
+      "reward": {"activity": 50}
+    }
+  }
+}

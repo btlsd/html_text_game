@@ -10,13 +10,17 @@
       "name": "사무원",
       "description": "의뢰를 접수하는 사무원입니다.",
       "stats": { "strength": 2, "perception": 4, "endurance": 3, "charisma": 4, "intelligence": 5, "agility": 2 },
-      "xp": 0
+      "xp": 0,
+      "skills": { "hack": 3 },
+      "relationship": 60
     },
     "경비병": {
       "name": "경비병",
       "description": "단단한 갑옷을 입은 경비병이 경계의 눈빛을 보냅니다.",
       "stats": { "strength": 5, "perception": 4, "endurance": 5, "charisma": 3, "intelligence": 3, "agility": 4 },
-      "xp": 40
+      "xp": 40,
+      "skills": { "sneak": 3, "lockpick": 2 },
+      "relationship": 40
     },
     "전투용 허수아비": {
       "name": "전투용 허수아비",
@@ -25,12 +29,45 @@
       "xp": 20,
       "hostile": true
     },
-    "고블린": {
-      "name": "고블린",
-      "description": "초록빛 피부의 작은 고블린이 날카로운 이빨을 드러냅니다.",
-      "stats": { "strength": 4, "perception": 3, "endurance": 4, "charisma": 1, "intelligence": 1, "agility": 3 },
+    "불량 드론": {
+      "name": "불량 드론",
+      "description": "전선이 삐져나온 소형 드론이 위협적으로 깜박입니다.",
+      "stats": { "strength": 4, "perception": 3, "endurance": 4, "charisma": 0, "intelligence": 2, "agility": 3 },
       "xp": 30,
-      "hostile": true
+      "hostile": true,
+      "corpseItem": "drone_core"
+    },
+    "네온 갱단원": {
+      "name": "네온 갱단원",
+      "description": "네온 장식을 두른 범죄자가 주변을 노려봅니다.",
+      "stats": { "strength": 5, "perception": 4, "endurance": 4, "charisma": 2, "intelligence": 2, "agility": 4 },
+      "xp": 35,
+      "hostile": true,
+      "corpseItem": "bandit_id"
+    },
+    "보안 로봇": {
+      "name": "보안 로봇",
+      "description": "폐공장을 순찰하는 무장 보안 로봇이 붉은 센서를 번뜩입니다.",
+      "stats": { "strength": 6, "perception": 5, "endurance": 6, "charisma": 0, "intelligence": 2, "agility": 3 },
+      "xp": 45,
+      "hostile": true,
+      "corpseItem": "robot_servo"
+    },
+    "합성 생명체": {
+      "name": "합성 생명체",
+      "description": "실험실에서 탈출한 미지의 합성 생명체가 낮게 으르렁거립니다.",
+      "stats": { "strength": 4, "perception": 4, "endurance": 5, "charisma": 1, "intelligence": 3, "agility": 4 },
+      "xp": 40,
+      "hostile": true,
+      "corpseItem": "synthetic_fiber"
+    },
+    "데이터 해적": {
+      "name": "데이터 해적",
+      "description": "불법 개조된 사이버덱을 장착한 데이터 해적이 당신을 노립니다.",
+      "stats": { "strength": 3, "perception": 5, "endurance": 3, "charisma": 2, "intelligence": 6, "agility": 4 },
+      "xp": 40,
+      "hostile": true,
+      "corpseItem": "data_chip"
     }
   }
 }
