@@ -117,6 +117,37 @@
       </div>
       <button id="battle-result-close">확인</button>
     </div>
+    <div id="quest-ui" style="display:none;">
+      <h3>의뢰</h3>
+      <ul id="quest-list"></ul>
+      <button id="close-quest">뒤로</button>
+    </div>
+    <div id="skills-ui" style="display:none;">
+      <h3>기술</h3>
+      <ul id="skill-list"></ul>
+      <button id="close-skills">뒤로</button>
+    </div>
+    <div id="butchering-ui" style="display:none;">
+      <h3>사체 손질</h3>
+      <div id="butcher-bar">
+        <div class="zone success"></div>
+        <div class="zone big"></div>
+        <div id="butcher-arrow"></div>
+      </div>
+      <p id="butcher-instruction">스페이스바로 정지</p>
+      <p id="butcher-result"></p>
+    </div>
+    <div id="hacking-ui" style="display:none;">
+      <pre id="hacking-code"></pre>
+      <div id="hacking-bar">
+        <div id="hacking-gauge"></div>
+        <div class="zone">
+          <div class="big"></div>
+        </div>
+      </div>
+      <p id="hacking-timer"></p>
+      <p id="hacking-result"></p>
+    </div>
     <div id="player-input-container">
       <input type="text" id="player-command" placeholder="명령을 입력하세요" />
       <button id="submit-command">입력</button>

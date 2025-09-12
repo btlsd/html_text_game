@@ -57,6 +57,30 @@
       "properties": {
         "defense": 3
       }
+    },
+    "drone_core": {
+      "name": "드론 코어",
+      "type": "quest"
+    },
+    "bandit_id": {
+      "name": "갱단 신분증",
+      "type": "quest"
+    },
+    "robot_servo": {
+      "name": "보안 서보",
+      "type": "quest"
+    },
+    "synthetic_fiber": {
+      "name": "합성 섬유",
+      "type": "quest"
+    },
+    "data_chip": {
+      "name": "데이터 칩",
+      "type": "quest"
+    },
+    "guild_letter": {
+      "name": "길드 서신",
+      "type": "quest"
     }
   }
 }

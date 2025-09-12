@@ -68,6 +68,21 @@ const battleResultEl = document.getElementById('battle-result');
 const battleResultStatsEl = document.getElementById('battle-result-stats');
 const battleOutcomeEl = document.getElementById('battle-outcome');
 const battleResultCloseEl = document.getElementById('battle-result-close');
+const questUIEl = document.getElementById('quest-ui');
+const questListEl = document.getElementById('quest-list');
+const closeQuestEl = document.getElementById('close-quest');
+const butcheringUIEl = document.getElementById('butchering-ui');
+const butcherBarEl = document.getElementById('butcher-bar');
+const butcherArrowEl = document.getElementById('butcher-arrow');
+const butcherResultEl = document.getElementById('butcher-result');
+const skillsUIEl = document.getElementById('skills-ui');
+const skillListEl = document.getElementById('skill-list');
+const closeSkillsEl = document.getElementById('close-skills');
+const hackingUIEl = document.getElementById('hacking-ui');
+const hackingCodeEl = document.getElementById('hacking-code');
+const hackingGaugeEl = document.getElementById('hacking-gauge');
+const hackingTimerEl = document.getElementById('hacking-timer');
+const hackingResultEl = document.getElementById('hacking-result');
 const xpBarEl = document.getElementById('xp-bar');
 const xpTextEl = document.getElementById('xp-text');
 const logEl = document.getElementById('log');
@@ -106,6 +121,11 @@ const currencyDisplayNames = {
   money: '원'
 };
 
+let debugMode = false;
+const questDefs = {};
+const activeQuests = [];
+const completedQuests = new Set();
+
 const player = {
   stats: {
     strength: 5,
@@ -125,7 +145,9 @@ const player = {
   level: 1,
   xp: 0,
   totalXp: 0,
-  conditions: new Set()
+  conditions: new Set(),
+  actionStats: {},
+  skillStats: {}
 };
 
 function getMaxHpFor(stats) {
@@ -166,6 +188,74 @@ function filterAvailable(list) {
   return list.filter(isAvailable);
 }
 
+const levelThresholds = [10, 100, 1000, 10000];
+
+function getTechniqueStat(store, key) {
+  if (!store[key]) {
+    store[key] = { level: 1, usage: 0, big: 0, success: 0, fail: 0 };
+  }
+  return store[key];
+}
+
+function gainTechniqueUsage(store, key, result, amount = 1) {
+  const stat = getTechniqueStat(store, key);
+  stat.usage += amount;
+  if (result === 'big') stat.big += amount;
+  else if (result === 'success') stat.success += amount;
+  else if (result === 'fail') stat.fail += amount;
+  while (stat.level < 5 && stat.usage >= levelThresholds[stat.level - 1]) {
+    stat.level++;
+  }
+  return stat;
+}
+
+function getTechniqueName(key) {
+  const act = actions.find(a => a.key === key);
+  if (act) return act.name;
+  const sk = skills.find(s => s.key === key);
+  if (sk) return sk.name;
+  return key;
+}
+
+function recordAction(key, result = 'success', amount = 1) {
+  gainTechniqueUsage(player.actionStats, key, result, amount);
+}
+
+function recordSkillUsage(key, result = 'success', amount = 1) {
+  gainTechniqueUsage(player.skillStats, key, result, amount);
+}
+
+function studyFromBook(key, amount = 1) {
+  if (actions.some(a => a.key === key)) {
+    recordAction(key, 'success', amount);
+  } else {
+    recordSkillUsage(key, 'success', amount);
+  }
+}
+
+function trainSkill(npc, key) {
+  const npcLevel = (npc.skills && npc.skills[key]) || 0;
+  const store = actions.some(a => a.key === key) ? player.actionStats : player.skillStats;
+  const stat = getTechniqueStat(store, key);
+  if (npcLevel <= stat.level) {
+    addLog(`${npc.name}에게서 배울 것이 없다.`);
+    addLogSeparator(logEl);
+    return false;
+  }
+  if ((npc.relationship || 0) < 50) {
+    if (player.money < 10) {
+      addLog('돈이 부족하다.');
+      addLogSeparator(logEl);
+      return false;
+    }
+    player.money -= 10;
+  }
+  addLog(`${npc.name}에게 ${getTechniqueName(key)}을 배웠다.`);
+  addLogSeparator(logEl);
+  gainTechniqueUsage(store, key, 'success', 5);
+  return true;
+}
+
 function toMenuOptions(list, getLabel) {
   const labelFn = getLabel || (item => item);
   return [...list.map(labelFn), '뒤로'];
@@ -182,7 +272,10 @@ function calculateHit(attacker, defender, accuracyMultiplier = 1) {
   chance *= accuracyMultiplier;
   if (chance < 0) chance = 0;
   if (chance > 1) chance = 1;
-  return Math.random() < chance;
+  const roll = Math.random();
+  const result = roll < chance;
+  debugLog(`calculateHit acc:${acc} eva:${eva} mult:${accuracyMultiplier} chance:${chance.toFixed(2)} roll:${roll.toFixed(2)} => ${result}`, battleState ? battleLogEl : logEl);
+  return result;
 }
 
 function calculateDamage(attacker, defender, weapon = null, defending = false) {
@@ -205,7 +298,10 @@ function calculateDamage(attacker, defender, weapon = null, defending = false) {
   if (defending) {
     dmg = Math.max(0, dmg - defender.endurance);
   }
-  return Math.round(dmg);
+  const finalDmg = Math.round(dmg);
+  const weaponName = weapon ? (weapon.name || 'weapon') : 'none';
+  debugLog(`calculateDamage atkStr:${attacker.strength} atkAgi:${attacker.agility} defEnd:${defender.endurance} weapon:${weaponName} defending:${defending} => ${finalDmg}`, battleState ? battleLogEl : logEl);
+  return finalDmg;
 }
 
 player.hp = getMaxHp();
@@ -253,6 +349,7 @@ let shopCurrency = 'money';
 let currentLocation = '';
 let currentMenu = 'main';
 let currentNpc = '';
+let currentNpcIndex = -1;
 let currentCategory = '';
 let currentSubcategory = null;
 let actionMenuStack = [];
@@ -284,6 +381,14 @@ function addLog(message) {
   entry.textContent = message;
   logEl.appendChild(entry);
   logEl.scrollTop = logEl.scrollHeight;
+}
+
+function debugLog(message, target = logEl) {
+  if (!debugMode) return;
+  const entry = document.createElement('div');
+  entry.textContent = `[DEBUG] ${message}`;
+  target.appendChild(entry);
+  target.scrollTop = target.scrollHeight;
 }
 
 function addLogSeparator(target) {
@@ -344,8 +449,11 @@ function applyLocationGrants(loc) {
 }
 
 function advanceTime(hours = 1) {
+  const prevTime = currentTime;
+  const prevPreservation = player.preservation;
   currentTime = (currentTime + hours) % 24;
   player.preservation = Math.max(0, player.preservation - hours);
+  debugLog(`advanceTime hours:${hours} time:${prevTime}->${currentTime} preservation:${prevPreservation}->${player.preservation}`);
   if (player.preservation === 0) {
     addLog('보존 기간이 끝났습니다. 당신은 사망했습니다.');
     alert('보존 기간이 끝났습니다. 게임이 초기화됩니다.');
@@ -543,7 +651,7 @@ function openGameMenu() {
   npcListEl.querySelectorAll('li').forEach(li => li.classList.remove('selected'));
 
   gameMenuListEl.innerHTML = '';
-  const items = ['상태', '기술', '소지품', '뒤로'];
+  const items = ['상태', '기술', '소지품', '의뢰', '설정', '뒤로'];
   displayMenu(gameMenuListEl, items, (idx) => {
     if (idx === 0) {
       openStatusMenu();
@@ -552,6 +660,10 @@ function openGameMenu() {
       openGameMenuSkills();
     } else if (idx === 2) {
       openInventory();
+    } else if (idx === 3) {
+      openQuestMenu();
+    } else if (idx === 4) {
+      openSettingsMenu();
     } else {
       showMainMenu();
     }
@@ -562,14 +674,50 @@ function openGameMenu() {
 }
 
 function openGameMenuSkills() {
-  currentMenu = 'gameMenuSkills';
-  const availableSkills = filterAvailable(skills);
-  displayMenu(gameMenuListEl, toMenuOptions(availableSkills, s => s.name), (idx) => {
-    if (idx === availableSkills.length) {
-      openGameMenu();
+  currentMenu = 'skills';
+  document.getElementById('location').style.display = 'none';
+  npcSectionEl.style.display = 'none';
+  actionSectionEl.style.display = 'none';
+  document.getElementById('status').style.display = 'none';
+  document.getElementById('player-input-container').style.display = 'none';
+  menuSectionEl.style.display = 'none';
+  skillListEl.innerHTML = '';
+  const all = [];
+  actions.forEach(a => {
+    const stat = getTechniqueStat(player.actionStats, a.key);
+    let text = `${a.name} Lv${stat.level} ${stat.usage}회`;
+    if (stat.big + stat.success + stat.fail > 0) {
+      text += ` (대성공${stat.big}/성공${stat.success}/실패${stat.fail})`;
+    }
+    all.push(text);
+  });
+  skills.forEach(s => {
+    const stat = getTechniqueStat(player.skillStats, s.key);
+    let text = `${s.name} Lv${stat.level} ${stat.usage}회`;
+    if (stat.big + stat.success + stat.fail > 0) {
+      text += ` (대성공${stat.big}/성공${stat.success}/실패${stat.fail})`;
+    }
+    all.push(text);
+  });
+  all.forEach(t => {
+    const li = document.createElement('li');
+    li.textContent = t;
+    skillListEl.appendChild(li);
+  });
+  skillsUIEl.style.display = 'block';
+}
+
+function openSettingsMenu() {
+  currentMenu = 'settings';
+  const items = [`디버그: ${debugMode ? 'ON' : 'OFF'}`, '뒤로'];
+  displayMenu(gameMenuListEl, items, (idx) => {
+    if (idx === 0) {
+      debugMode = !debugMode;
+      addLog(`디버그 모드가 ${debugMode ? '켜졌습니다' : '꺼졌습니다'}.`);
+      addLogSeparator(logEl);
+      openSettingsMenu();
     } else {
-      console.log(`Skill selected: ${availableSkills[idx].name}`);
-      advanceTime();
+      openGameMenu();
     }
   });
 }
@@ -627,7 +775,13 @@ function getNpcActions(npc) {
   if (info && info.hostile) {
     return ['전투'];
   }
-  return ['대화', '관찰'];
+  const actions = ['대화'];
+  if (npc === '사무원') actions.push('의뢰');
+  const deliverable = activeQuests.find(q => q.type === 'delivery' && q.recipient === npc && inventory.includes(q.item));
+  if (deliverable) actions.push('전달');
+  actions.push('관찰');
+  if (info && info.skills) actions.push('훈련');
+  return actions;
 }
 
 function startBattle(npc) {
@@ -647,6 +801,7 @@ function startBattle(npc) {
     processing: false,
     intervalId: null
   };
+  debugLog(`startBattle enemy:${enemyTemplate.name} hp:${maxHp}`, battleLogEl);
   document.getElementById('location').style.display = 'none';
   npcSectionEl.style.display = 'none';
   actionSectionEl.style.display = 'none';
@@ -725,7 +880,7 @@ async function battleAttack() {
   await typeBattleLog(message);
   addLogSeparator(battleLogEl);
   if (enemy.hp <= 0) {
-    endBattle(true);
+    await endBattle(true);
     return;
   }
   battleState.processing = false;
@@ -757,7 +912,10 @@ function openBattleSkillMenu() {
 
 async function useSkill(skill) {
   if (!battleState || !battleState.playerReady) return;
-  const cost = skill.staminaCost || 0;
+  const statInfo = getTechniqueStat(player.skillStats, skill.key);
+  const level = statInfo.level;
+  const baseCost = skill.staminaCost || 0;
+  const cost = Math.max(0, baseCost - (level - 1));
   if (player.stamina < cost) {
     await typeBattleLog('기력이 부족합니다.');
     addLogSeparator(battleLogEl);
@@ -774,8 +932,9 @@ async function useSkill(skill) {
   let totalDamage = 0;
   let hits = 0;
   const hitCount = skill.hitCount || 1;
+  const accMul = (skill.accuracyMultiplier || 1) + 0.05 * (level - 1);
   for (let i = 0; i < hitCount; i++) {
-    if (calculateHit(player.stats, enemy.stats, skill.accuracyMultiplier || 1)) {
+    if (calculateHit(player.stats, enemy.stats, accMul)) {
       let damage = 0;
       if (skill.type === 'physical') {
         const weapon = equipment.rightHand ? items[equipment.rightHand] : null;
@@ -798,10 +957,12 @@ async function useSkill(skill) {
     message = `${skill.name} 사용! ${totalDamage}의 피해를 입혔다.`;
   }
   battleState.stats.skillUsage[skill.name] = stat;
+  const outcome = hits === hitCount && hits > 0 ? 'big' : (hits > 0 ? 'success' : 'fail');
+  recordSkillUsage(skill.key, outcome);
   await typeBattleLog(message);
   addLogSeparator(battleLogEl);
   if (enemy.hp <= 0) {
-    endBattle(true);
+    await endBattle(true);
     return;
   }
   battleState.processing = false;
@@ -849,9 +1010,12 @@ async function attemptRun() {
   battleState.playerGauge = 0;
   const enemy = battleState.enemy;
   const chance = player.stats.agility / (player.stats.agility + enemy.stats.agility);
-  if (Math.random() < chance) {
+  const roll = Math.random();
+  const success = roll < chance;
+  debugLog(`attemptRun chance:${chance.toFixed(2)} roll:${roll.toFixed(2)} => ${success}`, battleLogEl);
+  if (success) {
     addLogSeparator(battleLogEl);
-    endBattle(null);
+    await endBattle(null);
     return;
   } else {
     await typeBattleLog('도주에 실패했다!');
@@ -882,7 +1046,7 @@ async function enemyTurn() {
   }
   await typeBattleLog(message);
   if (player.hp <= 0) {
-    endBattle(false);
+    await endBattle(false);
     return;
   }
 }
@@ -950,13 +1114,17 @@ function updateBattleTurn() {
   renderTurnBar();
 }
 
-function endBattle(victory) {
+async function endBattle(victory) {
   if (battleState.intervalId) clearInterval(battleState.intervalId);
   battleUIEl.style.display = 'none';
   battleSubmenuEl.style.display = 'none';
   const stats = battleState.stats;
   const enemy = battleState.enemy;
   const xpGain = victory ? (enemy.xp || 0) : 0;
+  debugLog(`endBattle result:${victory} xp:${xpGain}`, battleLogEl);
+  if (victory && enemy.corpseItem) {
+    await processCorpse(enemy);
+  }
   battleOutcomeEl.textContent = victory === null ? '도주' : (victory ? '승리' : '패배');
   const lines = [];
   lines.push(`가한 데미지: ${stats.damageDealt}`);
@@ -991,6 +1159,7 @@ function endBattle(victory) {
 function openNpcInteractions(npc, npcIndex) {
   currentMenu = 'npcInteractions';
   currentNpc = npc;
+  currentNpcIndex = npcIndex;
   updateHeaders();
   highlightItem(npcListEl, npcIndex);
   logNpcDescription(npc);
@@ -1004,6 +1173,13 @@ function openNpcInteractions(npc, npcIndex) {
       const action = npcActions[idx];
       if (action === '전투') {
         startBattle(npc);
+      } else if (action === '의뢰') {
+        openNpcQuestMenu(npc);
+      } else if (action === '전달') {
+        deliverQuestItem(npc);
+      } else if (action === '훈련') {
+        openTrainingMenu(npc);
+        return;
       } else {
         console.log(`Interaction with ${npc}: ${action}`);
       }
@@ -1045,15 +1221,22 @@ function openActionMenu() {
 function handleAction(action) {
   switch (action.key) {
     case 'wait':
-      console.log('기다리기 선택됨');
+      addLog('당신은 잠시 기다렸다.');
+      recordAction('wait');
       advanceTime();
       break;
     case 'sneak':
     case 'stealth':
     case 'lockpick':
-    case 'hack':
-      console.log(`${action.name} 선택됨`);
+      const success = Math.random() < 0.5;
+      addLog(`${action.name}을 시도하여 ${success ? '성공했다' : '실패했다'}.`);
+      recordAction(action.key, success ? 'success' : 'fail');
       advanceTime();
+      break;
+    case 'hack':
+      startHacking().then(() => {
+        advanceTime();
+      });
       break;
     case 'merc_shop':
       openMercenaryShop();
@@ -1536,15 +1719,239 @@ function closeInventory() {
   showMainMenu();
 }
 
+function openQuestMenu() {
+  currentMenu = 'quests';
+  updateHeaders();
+  document.getElementById('location').style.display = 'none';
+  npcSectionEl.style.display = 'none';
+  actionSectionEl.style.display = 'none';
+  document.getElementById('status').style.display = 'none';
+  document.getElementById('player-input-container').style.display = 'none';
+  menuSectionEl.style.display = 'none';
+  questListEl.innerHTML = '';
+  activeQuests.forEach(q => {
+    const def = questDefs[q.id];
+    const progress = def.count ? `${q.progress || 0}/${def.count}` : '';
+    const li = document.createElement('li');
+    li.textContent = `${def.name}${progress ? ` (${progress})` : ''}`;
+    questListEl.appendChild(li);
+  });
+  questUIEl.style.display = 'block';
+}
+
+function acceptQuest(id) {
+  activeQuests.push({ id, progress: 0 });
+  const def = questDefs[id];
+  addLog(`${def.name} 의뢰를 수락했다.`);
+  addLogSeparator(logEl);
+  if (def.type === 'delivery' && def.item) {
+    inventory.push(def.item);
+  }
+  render();
+}
+
+function completeQuest(q) {
+  const def = questDefs[q.id];
+  if (def.type === 'battle' && def.evidenceItem) {
+    const idx = inventory.indexOf(def.evidenceItem);
+    if (idx !== -1) inventory.splice(idx, 1);
+  }
+  if (def.reward) {
+    if (def.reward.money) {
+      player.money += def.reward.money;
+      addLog(`${def.reward.money}원을 획득했다.`);
+    }
+    if (def.reward.activity) {
+      player.activityPoints += def.reward.activity;
+      addLog(`활동도 ${def.reward.activity}를 획득했다.`);
+    }
+  }
+  completedQuests.add(q.id);
+  const i = activeQuests.indexOf(q);
+  if (i !== -1) activeQuests.splice(i, 1);
+  addLog(`${def.name} 의뢰를 완료했다!`);
+  addLogSeparator(logEl);
+  render();
+}
+
+function openNpcQuestMenu(npc) {
+  currentMenu = 'npcQuest';
+  const turnins = activeQuests.filter(q => questDefs[q.id].giver === npc && q.ready);
+  const available = Object.keys(questDefs).filter(id => questDefs[id].giver === npc && !activeQuests.some(q => q.id === id) && !completedQuests.has(id));
+  const items = [
+    ...turnins.map(q => `보고: ${questDefs[q.id].name}`),
+    ...available.map(id => `수락: ${questDefs[id].name}`),
+    '뒤로'
+  ];
+  displayMenu(npcInteractionListEl, items, (idx) => {
+    if (idx === items.length - 1) {
+      openNpcInteractions(npc, currentNpcIndex);
+    } else if (idx < turnins.length) {
+      completeQuest(turnins[idx]);
+      openNpcQuestMenu(npc);
+    } else {
+      const questId = available[idx - turnins.length];
+      acceptQuest(questId);
+      openNpcQuestMenu(npc);
+    }
+  });
+  npcInteractionListEl.style.display = 'block';
+}
+
+function deliverQuestItem(npc) {
+  const q = activeQuests.find(quest => quest.type === 'delivery' && quest.recipient === npc && inventory.includes(quest.item));
+  if (!q) return;
+  const idx = inventory.indexOf(q.item);
+  if (idx !== -1) inventory.splice(idx, 1);
+  q.ready = true;
+  completeQuest(q);
+  openNpcInteractions(npc, currentNpcIndex);
+}
+
+function openTrainingMenu(npcName) {
+  const npc = npcData[npcName];
+  if (!npc || !npc.skills) return;
+  currentMenu = 'training';
+  const keys = Object.keys(npc.skills);
+  const names = keys.map(k => getTechniqueName(k));
+  names.push('뒤로');
+  displayMenu(npcInteractionListEl, names, (idx) => {
+    if (idx === keys.length) {
+      openNpcInteractions(npcName, currentNpcIndex);
+    } else {
+      trainSkill({ name: npcName, skills: npc.skills, relationship: npc.relationship }, keys[idx]);
+      openNpcInteractions(npcName, currentNpcIndex);
+      advanceTime();
+    }
+  });
+}
+
+function startHacking() {
+  return new Promise(resolve => {
+    currentMenu = 'hack';
+    hackingCodeEl.textContent = '';
+    hackingCodeEl.classList.remove('error');
+    hackingResultEl.textContent = '';
+    let gauge = 0;
+    let time = 5000;
+    hackingGaugeEl.style.width = '0%';
+    hackingTimerEl.textContent = (time / 1000).toFixed(1);
+    document.getElementById('location').style.display = 'none';
+    npcSectionEl.style.display = 'none';
+    actionSectionEl.style.display = 'none';
+    document.getElementById('status').style.display = 'none';
+    document.getElementById('player-input-container').style.display = 'none';
+    menuSectionEl.style.display = 'none';
+    hackingUIEl.style.display = 'block';
+    const codeSnippets = ['if(', 'var ', 'let ', 'for(', 'while(', '=>', 'console.log(', 'function '];
+    const interval = setInterval(() => {
+      gauge = Math.max(0, gauge - 1);
+      hackingGaugeEl.style.width = `${gauge}%`;
+      time -= 100;
+      hackingTimerEl.textContent = (time / 1000).toFixed(1);
+      if (time <= 0 || gauge <= 0) {
+        end('fail');
+      }
+    }, 100);
+    function onKey(e) {
+      if (e.code === 'Enter') {
+        if (gauge >= 68 && gauge <= 72) end('big');
+        else if (gauge >= 60 && gauge <= 80) end('success');
+        else end('fail');
+      } else {
+        gauge = Math.min(100, gauge + 5);
+        const snippet = codeSnippets[Math.floor(Math.random() * codeSnippets.length)];
+        hackingCodeEl.textContent += snippet;
+      }
+    }
+    function end(result) {
+      clearInterval(interval);
+      document.removeEventListener('keydown', onKey);
+      if (result === 'fail') {
+        hackingCodeEl.classList.add('error');
+        hackingResultEl.textContent = 'Error';
+      } else {
+        hackingResultEl.textContent = 'Access';
+      }
+      recordAction('hack', result);
+      setTimeout(() => {
+        hackingUIEl.style.display = 'none';
+        document.getElementById('location').style.display = '';
+        npcSectionEl.style.display = '';
+        actionSectionEl.style.display = '';
+        document.getElementById('status').style.display = '';
+        document.getElementById('player-input-container').style.display = '';
+        menuSectionEl.style.display = '';
+        currentMenu = 'actions';
+        resolve(result !== 'fail');
+      }, 500);
+    }
+    document.addEventListener('keydown', onKey);
+  });
+}
+
+function processCorpse(enemy) {
+  return new Promise(resolve => {
+    if (!enemy.corpseItem) { resolve(false); return; }
+    currentMenu = 'butcher';
+    let pos = 0;
+    butcherResultEl.textContent = '';
+    butcheringUIEl.style.display = 'block';
+    const interval = setInterval(() => {
+      pos += 2;
+      if (pos > 100) pos = 0;
+      butcherArrowEl.style.left = `${pos}%`;
+    }, 30);
+    function onKey(e) {
+      if (e.code === 'Space') {
+        clearInterval(interval);
+        document.removeEventListener('keydown', onKey);
+        let success = false;
+        if (pos >= 45 && pos <= 55) {
+          butcherResultEl.textContent = '대성공';
+          success = true;
+        } else if (pos >= 30 && pos <= 70) {
+          butcherResultEl.textContent = '성공';
+          success = true;
+        } else {
+          butcherResultEl.textContent = '실패';
+        }
+        setTimeout(() => {
+          butcheringUIEl.style.display = 'none';
+          currentMenu = 'battleResult';
+          resolve(success);
+        }, 500);
+      }
+    }
+    document.addEventListener('keydown', onKey);
+  }).then(success => {
+    if (success) {
+      inventory.push(enemy.corpseItem);
+      const item = items[enemy.corpseItem];
+      addLog(`${item ? item.name : enemy.corpseItem}을 획득했다.`);
+      addLogSeparator(logEl);
+      activeQuests.forEach(q => {
+        const def = questDefs[q.id];
+        if (def.type === 'battle' && def.target === enemy.name) {
+          q.progress = (q.progress || 0) + 1;
+          if (q.progress >= (def.count || 1)) q.ready = true;
+        }
+      });
+      render();
+    }
+  });
+}
+
 async function loadData() {
-  const [conditionData, actionData, skillData, locationData, inventoryData, itemData, npcInfo] = await Promise.all([
+  const [conditionData, actionData, skillData, locationData, inventoryData, itemData, npcInfo, questData] = await Promise.all([
     fetch('data/conditions.json').then(res => res.json()),
     fetch('data/actions.json').then(res => res.json()),
     fetch('data/skills.json').then(res => res.json()),
     fetch('data/locations.json').then(res => res.json()),
     fetch('data/inventory.json').then(res => res.json()),
     fetch('data/items.json').then(res => res.json()),
-    fetch('data/npcs.json').then(res => res.json())
+    fetch('data/npcs.json').then(res => res.json()),
+    fetch('data/quests.json').then(res => res.json())
   ]);
 
   conditionDefs = conditionData.conditions;
@@ -1561,6 +1968,7 @@ async function loadData() {
   updateEquipmentConditions();
   categories = inventoryData.categories;
   npcData = npcInfo.npcs;
+  Object.assign(questDefs, questData.quests);
   currentCategory = categories[0] ? categories[0].key : '';
   applyLocationGrants(locations[currentLocation]);
   updateLocationAttitude();
@@ -1596,7 +2004,7 @@ actionHeaderEl.addEventListener('click', () => {
 });
 
 menuHeaderEl.addEventListener('click', () => {
-  if (currentMenu === 'gameMenu' || currentMenu === 'gameMenuSkills') {
+  if (currentMenu === 'gameMenu' || currentMenu === 'skills' || currentMenu === 'settings') {
     showMainMenu();
   } else {
     openGameMenu();
@@ -1662,7 +2070,7 @@ function handleCommand() {
       }
     }
   } else if (currentMenu === 'gameMenu') {
-    const items = ['상태', '기술', '소지품', '뒤로'];
+    const items = ['상태', '기술', '소지품', '의뢰', '설정', '뒤로'];
     if (num > 0 && num <= items.length) {
       highlightItem(gameMenuListEl, num - 1);
       if (num === 1) {
@@ -1672,19 +2080,55 @@ function handleCommand() {
         openGameMenuSkills();
       } else if (num === 3) {
         openInventory();
+      } else if (num === 4) {
+        openQuestMenu();
+      } else if (num === 5) {
+        openSettingsMenu();
       } else {
         showMainMenu();
       }
     }
-  } else if (currentMenu === 'gameMenuSkills') {
-    const availableSkills = filterAvailable(skills);
-    if (num > 0 && num <= availableSkills.length + 1) {
+  } else if (currentMenu === 'settings') {
+    const items = [`디버그: ${debugMode ? 'ON' : 'OFF'}`, '뒤로'];
+    if (num > 0 && num <= items.length) {
       highlightItem(gameMenuListEl, num - 1);
-      if (num === availableSkills.length + 1) {
-        openGameMenu();
+      if (num === 1) {
+        debugMode = !debugMode;
+        addLog(`디버그 모드가 ${debugMode ? '켜졌습니다' : '꺼졌습니다'}.`);
+        addLogSeparator(logEl);
+        openSettingsMenu();
       } else {
-        console.log(`Skill selected: ${availableSkills[num - 1].name}`);
+        openGameMenu();
+      }
+    }
+  } else if (currentMenu === 'training') {
+    const npc = npcData[currentNpc];
+    const keys = npc && npc.skills ? Object.keys(npc.skills) : [];
+    if (num > 0 && num <= keys.length + 1) {
+      highlightItem(npcInteractionListEl, num - 1);
+      if (num === keys.length + 1) {
+        openNpcInteractions(currentNpc, currentNpcIndex);
+      } else {
+        trainSkill({ name: currentNpc, skills: npc.skills, relationship: npc.relationship }, keys[num - 1]);
+        openNpcInteractions(currentNpc, currentNpcIndex);
         advanceTime();
+      }
+    }
+  } else if (currentMenu === 'npcQuest') {
+    const turnins = activeQuests.filter(q => questDefs[q.id].giver === currentNpc && q.ready);
+    const available = Object.keys(questDefs).filter(id => questDefs[id].giver === currentNpc && !activeQuests.some(q => q.id === id) && !completedQuests.has(id));
+    const items = [...turnins, ...available, '뒤로'];
+    if (num > 0 && num <= items.length) {
+      highlightItem(npcInteractionListEl, num - 1);
+      if (num === items.length) {
+        openNpcInteractions(currentNpc, currentNpcIndex);
+      } else if (num <= turnins.length) {
+        completeQuest(turnins[num - 1]);
+        openNpcQuestMenu(currentNpc);
+      } else {
+        const questId = available[num - turnins.length - 1];
+        acceptQuest(questId);
+        openNpcQuestMenu(currentNpc);
       }
     }
   } else if (currentMenu === 'battle') {
@@ -1738,5 +2182,21 @@ battleResultCloseEl.addEventListener('click', () => {
   battleResultEl.style.display = 'none';
   showMainMenu();
   render();
+});
+
+closeQuestEl.addEventListener('click', () => {
+  questUIEl.style.display = 'none';
+  showMainMenu();
+});
+
+closeSkillsEl.addEventListener('click', () => {
+  skillsUIEl.style.display = 'none';
+  document.getElementById('location').style.display = '';
+  npcSectionEl.style.display = '';
+  actionSectionEl.style.display = '';
+  document.getElementById('status').style.display = '';
+  document.getElementById('player-input-container').style.display = '';
+  menuSectionEl.style.display = '';
+  openGameMenu();
 });
 
